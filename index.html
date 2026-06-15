@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1b5e20">
+<title>Swamp Rabbit Trail Guide</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{
+    --green:#2e7d32; --blue:#1565c0; --orange:#ef6c00; --gold:#f9a825;
+    --tram:#6a1b9a; --connector:#00897b; --main:#5d6d7e; --constr:#e53935;
+    /* neutral surface system (flat, Spectrum-inspired) */
+    --bg:#ffffff; --surface:#ffffff; --surface-2:#f3f4f5; --surface-3:#e9ebec;
+    --border:#d6dadd; --border-2:#c0c6ca;
+    --ink:#15181b; --ink-2:#3b4146; --muted:#6b7378; --line:#e2e5e7;
+    --accent:#1b7a3b; --accent-ink:#0f5527;
+    --danger:#d32f2f;
+    --radius:10px; --radius-lg:16px;
+    --shadow-1:0 1px 2px rgba(18,22,26,.10),0 2px 8px rgba(18,22,26,.08);
+    --shadow-2:0 8px 30px rgba(18,22,26,.18);
+    --sheet-peek:78px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);}
+  #map{position:absolute;inset:0;z-index:0;background:#e6e9ea;}
+  svg{display:block;}
+
+  /* Top app bar — flat white chrome */
+  #topbar{position:absolute;top:0;left:0;right:0;z-index:500;background:var(--surface);
+    border-bottom:1px solid var(--border);box-shadow:var(--shadow-1);
+    padding:calc(env(safe-area-inset-top) + 9px) 14px 9px;display:flex;align-items:center;gap:11px;}
+  #topbar .brand{flex:0 0 auto;width:34px;height:34px;border-radius:9px;background:var(--accent);display:flex;align-items:center;justify-content:center;}
+  #topbar .brand svg{width:20px;height:20px;fill:#fff;}
+  #topbar .ttl{min-width:0;}
+  #topbar h1{margin:0;font-size:16px;font-weight:700;letter-spacing:-.2px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #topbar p{margin:1px 0 0;font-size:11px;color:var(--muted);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+  /* Floating action buttons — flat */
+  .fab{position:absolute;z-index:500;width:44px;height:44px;border-radius:12px;border:1px solid var(--border);
+    background:var(--surface);box-shadow:var(--shadow-1);display:flex;align-items:center;justify-content:center;
+    cursor:pointer;color:var(--ink-2);padding:0;}
+  .fab svg{width:22px;height:22px;fill:currentColor;}
+  .fab:active{background:var(--surface-2);}
+  #locateBtn{right:14px;bottom:calc(var(--sheet-peek) + 16px);}
+  #legendBtn{right:14px;bottom:calc(var(--sheet-peek) + 70px);}
+
+  /* Bottom sheet */
+  #sheet{position:absolute;left:0;right:0;bottom:0;z-index:600;background:var(--surface);
+    border-radius:16px 16px 0 0;box-shadow:var(--shadow-2);border-top:1px solid var(--border);
+    transform:translateY(calc(100% - var(--sheet-peek)));
+    transition:transform .32s cubic-bezier(.22,.61,.36,1);
+    max-height:82%;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom);}
+  #sheet.open{transform:translateY(0);}
+  #grip{flex:0 0 auto;padding:10px 0 6px;display:flex;flex-direction:column;align-items:center;cursor:pointer;}
+  #grip .bar{width:36px;height:4px;border-radius:3px;background:var(--border-2);}
+  #grip .label{font-size:11px;font-weight:700;color:var(--muted);margin-top:7px;letter-spacing:.5px;text-transform:uppercase;}
+  #sheetbody{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 16px 20px;}
+
+  .toggle-row{display:flex;align-items:center;gap:11px;padding:9px 8px;border-radius:var(--radius);cursor:pointer;}
+  .toggle-row:active{background:var(--surface-2);}
+  .swatch{flex:0 0 auto;width:26px;height:6px;border-radius:3px;}
+  .swatch.dash{background:none;border-radius:0;height:0;border-top:5px dashed var(--constr);}
+  .swatch.closed{background:none;border-radius:0;height:0;border-top:5px dashed var(--danger);}
+  .toggle-row .meta{flex:1;min-width:0;}
+  .toggle-row .meta b{font-size:14px;display:block;color:var(--ink);}
+  .toggle-row .meta span{font-size:11.5px;color:var(--muted);}
+  .toggle-row input{width:38px;height:22px;appearance:none;-webkit-appearance:none;background:var(--border-2);border-radius:11px;position:relative;cursor:pointer;flex:0 0 auto;transition:background .18s;}
+  .toggle-row input:checked{background:var(--accent);}
+  .toggle-row input::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .18s;box-shadow:0 1px 2px rgba(0,0,0,.35);}
+  .toggle-row input:checked::after{transform:translateX(16px);}
+
+  h2.sec{font-size:11px;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);font-weight:700;margin:18px 4px 8px;}
+  .card{border:1px solid var(--border);border-radius:12px;padding:13px;margin:9px 0;background:var(--surface);}
+  .card .head{display:flex;align-items:center;gap:9px;}
+  .card .dot{width:12px;height:12px;border-radius:3px;flex:0 0 auto;}
+  .card h3{margin:0;font-size:15px;font-weight:700;}
+  .card .route{font-size:12px;color:var(--muted);margin:4px 0 0;line-height:1.45;}
+  .card p{margin:8px 0 0;font-size:13px;line-height:1.5;}
+  .card .poi{font-size:12.5px;color:var(--ink-2);margin-top:8px;line-height:1.7;}
+  .card .poi b{color:var(--ink);}
+  .badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:800;letter-spacing:.4px;padding:3px 8px;border-radius:6px;background:#fdecea;color:var(--danger);margin-left:auto;text-transform:uppercase;}
+  .note{font-size:11.5px;color:var(--muted);line-height:1.55;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);}
+  .note a{color:var(--accent);font-weight:600;}
+
+  .leaflet-popup-content-wrapper{border-radius:12px;box-shadow:var(--shadow-2);border:1px solid var(--border);}
+  .leaflet-popup-content{font-size:13px;line-height:1.45;margin:12px 14px;}
+  .leaflet-popup-content b{font-size:14px;}
+  .leaflet-popup-content .pcat{display:inline-block;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:800;margin-bottom:2px;}
+  /* flatten Leaflet controls */
+  .leaflet-bar,.leaflet-control-layers{border:1px solid var(--border)!important;border-radius:10px!important;box-shadow:var(--shadow-1)!important;overflow:hidden;}
+  .leaflet-bar a{color:var(--ink-2)!important;background:var(--surface)!important;border-bottom-color:var(--border)!important;font-weight:600;}
+  .leaflet-bar a:hover{background:var(--surface-2)!important;}
+  .leaflet-top{top:calc(env(safe-area-inset-top) + 58px);}
+
+  /* Fly-out panel */
+  #panel{position:absolute;top:0;right:0;bottom:0;z-index:700;width:min(420px,92vw);
+    background:var(--surface);box-shadow:var(--shadow-2);border-left:1px solid var(--border);
+    transform:translateX(105%);transition:transform .34s cubic-bezier(.22,.61,.36,1);
+    display:flex;flex-direction:column;}
+  #panel.open{transform:translateX(0);}
+  #panelHead{flex:0 0 auto;background:var(--surface);border-top:4px solid var(--ph,var(--accent));
+    border-bottom:1px solid var(--border);padding:calc(env(safe-area-inset-top) + 14px) 52px 13px 16px;position:relative;}
+  #panelHead h2{margin:0;font-size:18px;font-weight:800;letter-spacing:-.2px;color:var(--ink);}
+  #panelHead .route{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.45;font-weight:500;}
+  #panelClose{position:absolute;top:calc(env(safe-area-inset-top) + 12px);right:12px;width:34px;height:34px;
+    border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--ink-2);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;padding:0;}
+  #panelClose svg{width:18px;height:18px;fill:currentColor;}
+  #panelClose:active{background:var(--surface-2);}
+  #panelBody{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 14px 24px;}
+
+  .poi-card{border:1px solid var(--border);border-radius:12px;padding:13px;margin:11px 0;background:var(--surface);}
+  .rp-head{display:flex;gap:11px;align-items:flex-start;}
+  .rp-ic{flex:0 0 auto;width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;}
+  .rp-ic svg{width:20px;height:20px;fill:#fff;}
+  .poi-card h3{margin:0;font-size:15px;line-height:1.25;font-weight:700;}
+  .rp-cat{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:700;margin-top:3px;}
+  .rp-blurb{font-size:12.5px;color:var(--ink-2);line-height:1.5;margin:9px 0 0;}
+  .panel-tip{background:var(--surface-2);border:1px solid var(--border);color:var(--ink-2);font-size:12.5px;line-height:1.5;border-radius:10px;padding:10px 12px;margin:4px 0 8px;}
+  .rp-actions{display:flex;gap:8px;margin-top:12px;}
+  .rp-actions button{flex:1;border:1px solid var(--border);background:var(--surface);border-radius:9px;padding:10px;font-size:12.5px;font-weight:700;color:var(--ink-2);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .rp-actions button svg{width:15px;height:15px;fill:currentColor;}
+  .rp-actions button.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .rp-actions button:active{filter:brightness(.95);}
+  .panel-empty{text-align:center;color:var(--muted);font-size:13.5px;line-height:1.6;padding:40px 16px;}
+
+  .route-start{background:var(--blue);color:#fff;font-size:11px;font-weight:800;padding:5px 9px;border-radius:8px;white-space:nowrap;box-shadow:var(--shadow-1);border:2px solid #fff;}
+  .closed-pin{width:30px;height:30px;border-radius:50%;background:var(--danger);border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-1);}
+  .closed-pin svg{width:17px;height:17px;fill:#fff;}
+  .click-dot{width:16px;height:16px;border-radius:50%;background:var(--accent);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);animation:clickpulse 1.6s ease-out infinite;}
+  @keyframes clickpulse{0%{box-shadow:0 1px 4px rgba(0,0,0,.45),0 0 0 0 rgba(27,122,59,.45);}70%{box-shadow:0 1px 4px rgba(0,0,0,.45),0 0 0 14px rgba(27,122,59,0);}100%{box-shadow:0 1px 4px rgba(0,0,0,.45),0 0 0 0 rgba(27,122,59,0);}}
+  .poi-pin svg{filter:drop-shadow(0 1px 2px rgba(0,0,0,.35));}
+
+  .panel-hint{position:absolute;left:50%;bottom:calc(var(--sheet-peek) + 22px);transform:translateX(-50%);z-index:450;
+    background:var(--ink);color:#fff;font-size:12px;font-weight:600;padding:9px 14px;border-radius:10px;
+    box-shadow:var(--shadow-2);pointer-events:none;transition:opacity .4s;display:flex;align-items:center;gap:7px;max-width:90vw;}
+  .panel-hint svg{width:16px;height:16px;fill:#fff;flex:0 0 auto;}
+
+  #errbar{position:absolute;top:0;left:0;right:0;z-index:900;display:none;
+    background:var(--danger);color:#fff;padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;
+    font-size:13px;line-height:1.45;box-shadow:var(--shadow-2);}
+  #errbar b{display:block;margin-bottom:2px;}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="errbar"></div>
+
+<div id="topbar">
+  <span class="brand"><svg viewBox="0 0 24 24"><path d="M19 15.18V7c0-2.21-1.79-4-4-4s-4 1.79-4 4v10c0 1.1-.9 2-2 2s-2-.9-2-2V8.82C8.16 8.4 9 7.3 9 6c0-1.66-1.34-3-3-3S3 4.34 3 6c0 1.3.84 2.4 2 2.82V17c0 2.21 1.79 4 4 4s4-1.79 4-4V7c0-1.1.9-2 2-2s2 .9 2 2v8.18A2.996 2.996 0 0015 18c0 1.66 1.34 3 3 3s3-1.34 3-3c0-1.3-.84-2.4-2-2.82z"/></svg></span>
+  <div class="ttl">
+    <h1>Swamp Rabbit Trail Guide</h1>
+    <p>Greenville County, SC · Travelers Rest → Greenville → Conestee → Fountain Inn</p>
+  </div>
+</div>
+
+<div class="panel-hint" id="panelHint"><svg viewBox="0 0 24 24"><path d="M9 11.24V7.5a1.5 1.5 0 013 0v3.74c1.21-.81 2-2.18 2-3.74a4 4 0 10-8 0c0 1.56.79 2.93 2 3.74zM18.84 15.87l-4.54-2.26c-.17-.07-.35-.11-.54-.11H13v-6a1.5 1.5 0 00-3 0v10.74l-3.43-.72a1 1 0 00-.93.27l-.71.71 4.05 4.05c.27.27.65.43 1.04.43h6.75c.75 0 1.38-.55 1.49-1.29l.75-5.27c.07-.51-.18-1.01-.63-1.25z"/></svg><span>Tap the trail line for points of interest within 2 miles</span></div>
+
+<div id="panel">
+  <div id="panelHead">
+    <button id="panelClose" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M18.3 5.71L12 12.01 5.7 5.71 4.29 7.12 10.59 13.42 4.29 19.72 5.7 21.13 12 14.83l6.3 6.3 1.41-1.41-6.3-6.3 6.3-6.3z"/></svg></button>
+    <h2 id="panelTitle">Trail section</h2>
+    <div class="route" id="panelRoute"></div>
+  </div>
+  <div id="panelBody"></div>
+</div>
+
+<button id="legendBtn" class="fab" title="Legend & sections" aria-label="Legend"><svg viewBox="0 0 24 24"><path d="M11.99 18.54l-7.37-5.73L3 14.07l9 7 9-7-1.63-1.27-7.38 5.74zM12 16l7.36-5.73L21 9l-9-7-9 7 1.63 1.27L12 16z"/></svg></button>
+<button id="locateBtn" class="fab" title="Find my location" aria-label="Locate"><svg viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg></button>
+
+<div id="sheet" class="open">
+  <div id="grip"><div class="bar"></div><div class="label">Trail Guide · tap to show / hide</div></div>
+  <div id="sheetbody">
+    <h2 class="sec">Show / hide lines</h2>
+    <div id="toggles"></div>
+    <h2 class="sec">Section guide</h2>
+    <div id="sections"></div>
+    <div class="note">
+      Trail geometry & construction segments from OpenStreetMap (live as of June 2026).
+      Line colors follow the official Prisma Health Swamp Rabbit Trail map. Construction/planned
+      segments are shown with a dashed red overlay and may not be open yet — check
+      <a href="https://greenvillerec.com" target="_blank" rel="noopener">greenvillerec.com</a> before you go.
+    </div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+function showErr(title,msg){
+  var b=document.getElementById('errbar');
+  b.innerHTML='<b>'+title+'</b>'+msg; b.style.display='block';
+}
+window.addEventListener('error',function(e){
+  showErr('Something went wrong loading the map', (e.message||'')+ ' — try reloading, or check your internet connection.');
+});
+
+// Load Leaflet with a fallback CDN so one flaky network request can't break the map.
+function loadScript(src,onok,onfail){
+  var s=document.createElement('script');s.src=src;s.onload=onok;s.onerror=onfail;document.head.appendChild(s);
+}
+function loadCss(href){var l=document.createElement('link');l.rel='stylesheet';l.href=href;document.head.appendChild(l);}
+
+function startWhenReady(){
+  if(!window.SRT_TRAIL){showErr('Trail data missing','Could not load data.js — make sure it sits next to index.html.');return;}
+  try{ initApp(); }
+  catch(err){ showErr('Map failed to start', (err&&err.message)||String(err)); }
+}
+
+(function bootLeaflet(){
+  var CDNS=[
+    {css:'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', js:'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'},
+    {css:'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css', js:'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js'},
+    {css:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css', js:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js'}
+  ];
+  var i=0;
+  function tryNext(){
+    if(i>=CDNS.length){showErr('Map library could not load','Leaflet failed to download from all sources — check your internet connection, then reload.');return;}
+    var c=CDNS[i++];
+    loadCss(c.css);
+    loadScript(c.js, function(){ if(window.L) startWhenReady(); else tryNext(); }, tryNext);
+  }
+  tryNext();
+})();
+
+const COLORS={green:'#2e7d32',blue:'#1565c0',orange:'#ef6c00',gold:'#f9a825',tram:'#6a1b9a',connector:'#00897b',main:'#5d6d7e'};
+const CONSTR='#e53935';
+
+const LINES=[
+ {key:'green',name:'Green Line',desc:'Main spine · ~15.4 mi',route:'N. of Travelers Rest → Furman → downtown Greenville → Cleveland Park',
+  pois:'Sunrift Adventures · Swamp Rabbit Brewery · Trailblazer Park · Furman University & lake · Swamp Rabbit Cafe & Grocery · Unity Park · Linky Stone Park · Falls Park / Liberty Bridge · Fluor Field'},
+ {key:'blue',name:'Blue Line',desc:'Southern reach · ~2 segments',route:'Through Conestee Nature Preserve (Spanco Dr → around Marrow Bone Creek → Henderson Ave / Chatham Dr) ↔ Parkins Mill Rd, and S. Pleasantburg Dr → Cleveland Park',
+  pois:'Conestee Nature Preserve & boardwalks · Conestee Park · Greenville Technical College · Cleveland Park & Greenville Zoo · Sliding Rock Creek mountain-bike trails'},
+ {key:'orange',name:'Orange Line',desc:'Spur · ~1 mi out-and-back',route:'Green Line at W. Washington St → Buncombe Rd',
+  pois:'Connects the West End / downtown grid to the main trail'},
+ {key:'gold',name:'Gold Line / Golden Strip',desc:'Mauldin · Simpsonville · Fountain Inn',route:'Built strips at Mauldin BridgeWay Station, Simpsonville (Heritage Park), and Fountain Inn — being stitched together into a continuous southern extension',
+  pois:'Mauldin BridgeWay Station & Gateway Bridge (over I-385) · Simpsonville Heritage Park / CCNB Amphitheatre · Fountain Inn HS · Bryson Elementary (connecting links still under construction — opens ~2027)'},
+ {key:'tram',name:'Tram Trail',desc:'Connector loop',route:'Side loop / connector off the Green Line',pois:'Quiet alternate routing & neighborhood access'},
+ {key:'connector',name:'Clean Water Connector',desc:'Connector loop',route:'Loop spur off the main trail',pois:'Scenic connector loop'},
+ {key:'main',name:'Other trail & spurs',desc:'Unbranded segments',route:'Access spurs, extensions & connectors not assigned a color line',pois:'Trailheads, parking spurs & neighborhood connectors'},
+];
+
+const POI_COLOR={park:'#2e7d32',food:'#ef6c00',shop:'#6a1b9a',landmark:'#1565c0'};
+
+// ---- Bold SVG icon set (24x24, solid) ----
+const ICON_PATHS={
+  park:'M12 3 16.6 10 14 10 18 16 13 16 13 21 11 21 11 16 6 16 10 10 7.4 10Z',
+  food:'M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z',
+  shop:'M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm0 10c-2.76 0-5-2.24-5-5h2c0 1.66 1.34 3 3 3s3-1.34 3-3h2c0 2.76-2.24 5-5 5z',
+  landmark:'M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z',
+  route:'M21 3 3 10.53v.98l6.84 2.65L12.48 21h.98L21 3z',
+  external:'M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z',
+  warning:'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z'
+};
+const CAT_ICON={park:'park',food:'food',shop:'shop',landmark:'landmark'};
+function glyph(name,size){return '<svg viewBox="0 0 24 24" width="'+(size||20)+'" height="'+(size||20)+'"><path d="'+ICON_PATHS[name]+'"/></svg>';}
+// Flat map pin (teardrop) with a bold white glyph in the head
+function pinSvg(color,iconName){
+  return '<svg width="30" height="38" viewBox="0 0 24 30">'
+    +'<path d="M12 1C6.8 1 2.5 5.3 2.5 10.5c0 6.6 9.5 18 9.5 18s9.5-11.4 9.5-18C21.5 5.3 17.2 1 12 1z" fill="'+color+'" stroke="#fff" stroke-width="1.6"/>'
+    +'<g transform="translate(6,4.8) scale(0.5)" fill="#fff"><path d="'+ICON_PATHS[iconName]+'"/></g></svg>';
+}
+
+function initApp(){
+const map=L.map('map',{zoomControl:false}).setView([34.86,-82.40],12);
+L.control.zoom({position:'topleft'}).addTo(map);
+// ── Basemap (free-tier provider) ───────────────────────────────────────────
+// 1. Create a free MapTiler account → https://cloud.maptiler.com/  (free tier ~100k tile loads/mo)
+// 2. Copy your key and paste it below.
+// 3. In the MapTiler dashboard, restrict the key to your domain (Origins allowlist) so it can't be abused.
+// If the key is left blank the map falls back to keyless OpenStreetMap tiles so it still works.
+//   Prefer Stadia Maps instead? Swap STREETS_URL for:
+//   'https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.png?api_key='+TILE_KEY  (free, also key/domain-restricted)
+const TILE_KEY='8lToP1AFQIUf63sNCzdU';   // ← MapTiler key (restrict to your domain in the MapTiler dashboard)
+const hasKey=!!TILE_KEY;
+
+const streets=hasKey
+  ? L.tileLayer('https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key='+TILE_KEY,
+      {maxZoom:20, tileSize:512, zoomOffset:-1, crossOrigin:true,
+       attribution:'&copy; <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'})
+  : L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {maxZoom:19, attribution:'&copy; OpenStreetMap contributors'});
+
+const light=hasKey
+  ? L.tileLayer('https://api.maptiler.com/maps/dataviz-light/{z}/{x}/{y}.png?key='+TILE_KEY,
+      {maxZoom:20, tileSize:512, zoomOffset:-1, crossOrigin:true,
+       attribution:'&copy; <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> &copy; OpenStreetMap'})
+  : L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+      {maxZoom:20, subdomains:'abcd', attribution:'&copy; OpenStreetMap &copy; CARTO'});
+
+streets.addTo(map);
+L.control.layers({'Streets (roads)':streets,'Light':light},null,{position:'topleft',collapsed:true}).addTo(map);
+
+// ---- Trail layers grouped by line ----
+const layerByLine={};
+Object.keys(COLORS).forEach(k=>layerByLine[k]=L.layerGroup().addTo(map));
+const constrLayer=L.layerGroup().addTo(map);
+
+const bounds=L.latLngBounds([]);
+SRT_TRAIL.features.forEach(f=>{
+  const line=f.properties.line, isC=f.properties.construction;
+  const latlngs=f.geometry.coordinates.map(c=>[c[1],c[0]]);
+  latlngs.forEach(ll=>bounds.extend(ll));
+  // white casing/halo underneath each colored line so it reads clearly on any basemap
+  L.polyline(latlngs,{color:'#ffffff',weight:isC?7:9,opacity:.85,lineCap:'round',lineJoin:'round',interactive:false}).addTo(layerByLine[line]);
+  // base colored line (thicker for visibility) — click to open the reviews panel for this line
+  const seg=L.polyline(latlngs,{color:COLORS[line]||COLORS.main,weight:isC?4:6,opacity:1,
+    lineCap:'round',lineJoin:'round'}).addTo(layerByLine[line]);
+  seg.on('click',e=>{L.DomEvent.stopPropagation(e);openPanelAt(e.latlng);});
+  seg.on('mouseover',()=>seg.setStyle({weight:isC?6:8}));
+  seg.on('mouseout',()=>seg.setStyle({weight:isC?4:6}));
+  // construction overlay (dashed red on top)
+  if(isC){
+    L.polyline(latlngs,{color:CONSTR,weight:5,opacity:1,dashArray:'3,10',lineCap:'round'})
+      .bindPopup('<span class="pcat">Under construction / planned</span><br><b>'+f.properties.name+'</b><br>This segment is being built and may not be open yet.')
+      .addTo(constrLayer);
+  }
+});
+
+// ---- Current closures (from recent news; runs into ~Oct 2026) ----
+const closureLayer=L.layerGroup().addTo(map);
+(window.SRT_CLOSURES||[]).forEach(c=>{
+  L.polyline(c.span,{color:'#ffffff',weight:9,opacity:.8,lineCap:'round'}).addTo(closureLayer);
+  L.polyline(c.span,{color:'#d32f2f',weight:6,opacity:.95,dashArray:'12,9',lineCap:'round'}).addTo(closureLayer);
+  const mid=c.span[Math.floor(c.span.length/2)];
+  const ic=L.divIcon({className:'',html:'<div class="closed-pin">'+glyph('warning',17)+'</div>',iconSize:[30,30],iconAnchor:[15,15],popupAnchor:[0,-15]});
+  L.marker(mid,{icon:ic,zIndexOffset:1100}).bindPopup(
+    '<span class="pcat" style="color:#d32f2f">Currently closed</span><br><b>'+c.name+'</b><br>'+c.stretch+'<br>'+c.detail+'<br><b>'+c.dates+'</b>'
+  ).addTo(closureLayer);
+});
+
+// ---- POI markers ----
+// Parks & landmarks stay visible at all zooms; the denser food/shop pins only appear when zoomed in.
+const poiMainLayer=L.layerGroup().addTo(map);   // park + landmark
+const poiDetailLayer=L.layerGroup();            // food + shop (zoom-gated)
+const DETAIL_ZOOM=14;
+let poisEnabled=true;
+const markerByName={};
+SRT_POIS.forEach(p=>{
+  const col=POI_COLOR[p.category]||'#1565c0';
+  const icon=L.divIcon({className:'',html:'<div class="poi-pin">'+pinSvg(col,CAT_ICON[p.category]||'landmark')+'</div>',
+    iconSize:[30,38],iconAnchor:[15,38],popupAnchor:[0,-34]});
+  const m=L.marker([p.lat,p.lon],{icon});
+  m.on('click',e=>{L.DomEvent.stopPropagation(e);openPanelAt(L.latLng(p.lat,p.lon),p.name);});
+  m.addTo((p.category==='food'||p.category==='shop')?poiDetailLayer:poiMainLayer);
+  markerByName[p.name]=m;
+});
+function updatePoiVisibility(){
+  if(!poisEnabled){map.removeLayer(poiMainLayer);map.removeLayer(poiDetailLayer);return;}
+  map.addLayer(poiMainLayer);
+  if(map.getZoom()>=DETAIL_ZOOM)map.addLayer(poiDetailLayer); else map.removeLayer(poiDetailLayer);
+}
+map.on('zoomend',updatePoiVisibility);
+
+map.fitBounds(bounds.pad(0.08));
+updatePoiVisibility();
+
+// ---- Routing graph over the whole trail network (for "Show on map") ----
+function hav(la1,lo1,la2,lo2){
+  const R=6371000,r=Math.PI/180;
+  const dLa=(la2-la1)*r,dLo=(lo2-lo1)*r;
+  const a=Math.sin(dLa/2)**2+Math.cos(la1*r)*Math.cos(la2*r)*Math.sin(dLo/2)**2;
+  return 2*R*Math.asin(Math.sqrt(a));
+}
+const GKEY=(la,lo)=>la.toFixed(6)+','+lo.toFixed(6);
+const G={};
+SRT_TRAIL.features.forEach(f=>{
+  const cs=f.geometry.coordinates; // [lon,lat]
+  for(let i=0;i<cs.length;i++){
+    const k=GKEY(cs[i][1],cs[i][0]);
+    if(!G[k])G[k]={lat:cs[i][1],lon:cs[i][0],adj:[]};
+    if(i>0){
+      const pk=GKEY(cs[i-1][1],cs[i-1][0]);
+      const w=hav(cs[i-1][1],cs[i-1][0],cs[i][1],cs[i][0]);
+      G[k].adj.push({k:pk,w}); G[pk].adj.push({k,w});
+    }
+  }
+});
+const GKEYS=Object.keys(G);
+function nearestNode(la,lo){let best=null,bd=Infinity;for(const k of GKEYS){const n=G[k];const d=hav(la,lo,n.lat,n.lon);if(d<bd){bd=d;best=k;}}return{k:best,d:bd};}
+// Min-heap for Dijkstra
+function Heap(){this.a=[];}
+Heap.prototype.push=function(x){const a=this.a;a.push(x);let i=a.length-1;while(i>0){const p=(i-1)>>1;if(a[p][0]<=a[i][0])break;const t=a[p];a[p]=a[i];a[i]=t;i=p;}};
+Heap.prototype.pop=function(){const a=this.a,top=a[0],last=a.pop();if(a.length){a[0]=last;let i=0;const n=a.length;for(;;){let l=2*i+1,r=l+1,s=i;if(l<n&&a[l][0]<a[s][0])s=l;if(r<n&&a[r][0]<a[s][0])s=r;if(s===i)break;const t=a[s];a[s]=a[i];a[i]=t;i=s;}}return top;};
+Heap.prototype.size=function(){return this.a.length;};
+
+// Full single-source shortest paths from node sk (distances in metres along the trail)
+function dijkstraFull(sk){
+  const dist={},prev={};
+  dist[sk]=0; const h=new Heap(); h.push([0,sk]);
+  while(h.size()){
+    const [d,k]=h.pop();
+    if(d>dist[k])continue;
+    for(const e of G[k].adj){const nd=d+e.w; if(dist[e.k]===undefined||nd<dist[e.k]){dist[e.k]=nd;prev[e.k]=k;h.push([nd,e.k]);}}
+  }
+  return {dist,prev};
+}
+function pathTo(prev,gk){const out=[];let c=gk;while(c!==undefined){out.push(G[c]);c=prev[c];}out.reverse();return out;}
+
+// Pre-snap every POI to its nearest trail node (POIs are fixed)
+const poiNode={};
+SRT_POIS.forEach(p=>poiNode[p.name]=nearestNode(p.lat,p.lon));
+
+// Cache the shortest-path tree for the current origin so cards + routes share one computation
+let curDijk=null, originSnap=null;
+function ensureDijk(){
+  if(originSnap && originSnap.forLat===routeOrigin.lat && originSnap.forLng===routeOrigin.lng) return;
+  originSnap=nearestNode(routeOrigin.lat,routeOrigin.lng);
+  originSnap.forLat=routeOrigin.lat; originSnap.forLng=routeOrigin.lng;
+  curDijk=dijkstraFull(originSnap.k);
+}
+// Trip from current origin to a POI: follow the trail as far as it connects, then a straight line.
+function tripInfo(p){
+  const gN=poiNode[p.name];
+  if(curDijk.dist[gN.k]!==undefined){
+    return {reachable:true, total:originSnap.d+curDijk.dist[gN.k]+gN.d, nodes:pathTo(curDijk.prev,gN.k)};
+  }
+  // destination is on a disconnected stretch — go as far along the trail as we can, then a line
+  let best=null,bd=Infinity;
+  for(const k in curDijk.dist){const n=G[k];const dd=hav(p.lat,p.lon,n.lat,n.lon);if(dd<bd){bd=dd;best=k;}}
+  return {reachable:false, total:originSnap.d+curDijk.dist[best]+bd, nodes:pathTo(curDijk.prev,best)};
+}
+
+const routeLayer=L.layerGroup().addTo(map);
+function showRoute(lat,lon,name){
+  routeLayer.clearLayers();
+  closePanel();
+  if(!routeOrigin){ map.flyTo([lat,lon],16); return; }
+  ensureDijk();
+  const poi=SRT_POIS.find(q=>q.name===name) || {name,lat,lon};
+  const info=tripInfo(poi);
+  const trail=info.nodes.map(n=>[n.lat,n.lon]);
+  const startIcon=L.divIcon({className:'',html:'<div class="route-start">You</div>',iconSize:[40,40],iconAnchor:[20,40]});
+  L.marker([routeOrigin.lat,routeOrigin.lng],{icon:startIcon,interactive:false}).addTo(routeLayer);
+  const pts=[[routeOrigin.lat,routeOrigin.lng]];
+  if(trail.length){
+    L.polyline(trail,{color:'#fff',weight:11,opacity:.9,lineCap:'round'}).addTo(routeLayer);
+    L.polyline(trail,{color:'#0d47a1',weight:7,opacity:.95,lineCap:'round'}).addTo(routeLayer);
+    // dashed connector from where you tapped onto the trail
+    L.polyline([[routeOrigin.lat,routeOrigin.lng],trail[0]],{color:'#0d47a1',weight:3,opacity:.85,dashArray:'3,7'}).addTo(routeLayer);
+    pts.push(...trail);
+  }
+  // straight dashed line for the remaining gap (off-trail bit, or bridge across a trail gap)
+  const last = trail.length ? trail[trail.length-1] : [routeOrigin.lat,routeOrigin.lng];
+  L.polyline([last,[lat,lon]],{color:'#0d47a1',weight:3,opacity:.85,dashArray:'3,7'}).addTo(routeLayer);
+  L.circleMarker([lat,lon],{radius:6,color:'#fff',weight:2,fillColor:'#0d47a1',fillOpacity:1,interactive:false}).addTo(routeLayer);
+  pts.push([lat,lon]);
+  const mi=(info.total/1609.34).toFixed(2);
+  const walk=Math.max(1,Math.round(info.total/1.35/60)), bike=Math.max(1,Math.round(info.total/4.5/60));
+  const note=info.reachable?'':'<br><span style="color:#b71c1c">last stretch is off-trail (straight line)</span>';
+  L.popup({autoPan:true}).setLatLng([lat,lon])
+    .setContent('<span class="pcat">Route from where you tapped</span><br><b>'+name+'</b><br><b>'+mi+' mi</b> via the trail · Walk ~'+walk+' min · Bike ~'+bike+' min'+note).openOn(map);
+  map.fitBounds(L.latLngBounds(pts).pad(0.25));
+}
+
+// ---- Points-of-interest fly-out panel (local to where you tap) ----
+let routeOrigin=null;            // the spot on the trail the user tapped
+const RADIUS_MI=2, RADIUS_M=RADIUS_MI*1609.34;
+const panel=document.getElementById('panel');
+
+// Indicator showing exactly where you pointed + the 5-mile search radius
+const clickLayer=L.layerGroup().addTo(map);
+function setIndicator(latlng){
+  clickLayer.clearLayers();
+  L.circle(latlng,{radius:RADIUS_M,color:'#1b5e20',weight:1.5,opacity:.55,fillColor:'#2e7d32',fillOpacity:.07,interactive:false}).addTo(clickLayer);
+  const ic=L.divIcon({className:'',html:'<div class="click-dot"></div>',iconSize:[22,22],iconAnchor:[11,11]});
+  L.marker(latlng,{icon:ic,interactive:false,zIndexOffset:1000}).addTo(clickLayer);
+}
+
+function openPanelAt(latlng,focusName){
+  routeOrigin=latlng;
+  setIndicator(latlng);
+  document.getElementById('panelHead').style.setProperty('--ph','var(--accent)');
+  document.getElementById('panelTitle').textContent='Points of interest';
+  const body=document.getElementById('panelBody');
+  ensureDijk();
+  // filter by the 5-mile geographic radius (the circle), but label & sort by trail distance
+  let near=SRT_POIS.map(p=>({p,straight:hav(latlng.lat,latlng.lng,p.lat,p.lon),trip:tripInfo(p)}))
+                   .filter(o=>o.straight<=RADIUS_M).sort((a,b)=>a.trip.total-b.trip.total);
+  if(focusName) near.sort((a,b)=>(a.p.name===focusName?-1:0)-(b.p.name===focusName?-1:0));
+  if(!near.length){
+    document.getElementById('panelRoute').textContent='Within '+RADIUS_MI+' miles of the spot you tapped';
+    body.innerHTML='<div class="panel-empty">No catalogued points of interest within '+RADIUS_MI+' miles of here.<br>Try tapping a busier stretch of the trail (downtown Greenville or Travelers Rest).</div>';
+  } else {
+    document.getElementById('panelRoute').textContent=near.length+' stop'+(near.length>1?'s':'')+' within '+RADIUS_MI+' miles · nearest by trail';
+    body.innerHTML = near.map(({p,trip})=>{
+      const pc=POI_COLOR[p.category]||'#1565c0';
+      const mi=(trip.total/1609.34).toFixed(1);
+      const distLabel = trip.reachable ? mi+' mi via trail' : mi+' mi (partly off-trail)';
+      return '<div class="poi-card">'
+        +'<div class="rp-head"><div class="rp-ic" style="background:'+pc+'">'+glyph(CAT_ICON[p.category]||'landmark',20)+'</div>'
+        +'<div><h3>'+p.name+'</h3><div class="rp-cat">'+p.category+' · '+distLabel+'</div></div></div>'
+        +'<p class="rp-blurb">'+p.blurb+'</p>'
+        +'<div class="rp-actions"><button data-lat="'+p.lat+'" data-lon="'+p.lon+'" data-name="'+p.name.replace(/"/g,'&quot;')+'" class="go primary">'+glyph('route',15)+'Show route</button>'
+        +'<button data-dir="'+p.lat+','+p.lon+'" class="dir">'+glyph('external',15)+'Open in Maps</button></div></div>';
+    }).join('');
+  }
+  panel.classList.add('open');
+  document.getElementById('sheet').classList.remove('open');
+  document.getElementById('panelHint').style.opacity='0';
+  body.scrollTop=0;
+  // wire action buttons
+  body.querySelectorAll('.go').forEach(b=>b.onclick=()=>showRoute(+b.dataset.lat,+b.dataset.lon,b.dataset.name));
+  body.querySelectorAll('.dir').forEach(b=>b.onclick=()=>{
+    window.open('https://www.google.com/maps/dir/?api=1&destination='+b.dataset.dir,'_blank');
+  });
+}
+function closePanel(){panel.classList.remove('open');clickLayer.clearLayers();}
+document.getElementById('panelClose').addEventListener('click',closePanel);
+// Tapping the trail line opens the local POI search; tapping empty map just closes the panel
+map.on('click',closePanel);
+// auto-hide the hint after a few seconds
+setTimeout(()=>{const h=document.getElementById('panelHint');if(h)h.style.opacity='0';},6000);
+
+// ---- Toggles ----
+const togWrap=document.getElementById('toggles');
+function addToggle(label,sub,swatchHtml,checked,onChange){
+  const row=document.createElement('label');row.className='toggle-row';
+  row.innerHTML=swatchHtml+'<div class="meta"><b>'+label+'</b><span>'+sub+'</span></div>';
+  const inp=document.createElement('input');inp.type='checkbox';inp.checked=checked;
+  inp.addEventListener('change',()=>onChange(inp.checked));
+  row.appendChild(inp);togWrap.appendChild(row);
+}
+LINES.forEach(l=>{
+  if(!layerByLine[l.key]) return;
+  addToggle(l.name,l.desc,'<span class="swatch" style="background:'+COLORS[l.key]+'"></span>',true,
+    on=>{ on?map.addLayer(layerByLine[l.key]):map.removeLayer(layerByLine[l.key]); });
+});
+addToggle('Under construction','Planned / being built','<span class="swatch dash"></span>',true,
+  on=>{ on?map.addLayer(constrLayer):map.removeLayer(constrLayer); });
+addToggle('Currently closed','Active closures & detours','<span class="swatch closed"></span>',true,
+  on=>{ on?map.addLayer(closureLayer):map.removeLayer(closureLayer); });
+addToggle('Points of interest','Food/shops appear when you zoom in','<span class="swatch" style="background:#1565c0"></span>',true,
+  on=>{ poisEnabled=on; updatePoiVisibility(); });
+
+// ---- Section guide cards ----
+const secWrap=document.getElementById('sections');
+LINES.forEach(l=>{
+  if(l.key==='main'||l.key==='tram'||l.key==='connector') return; // show main lines as cards
+  const c=document.createElement('div');c.className='card';
+  const constr=l.key==='gold'?'<span class="badge">IN PROGRESS</span>':'';
+  c.innerHTML='<div class="head"><span class="dot" style="background:'+COLORS[l.key]+'"></span>'
+    +'<h3>'+l.name+'</h3>'+constr+'</div>'
+    +'<div class="route">'+l.route+'</div>'
+    +'<div class="poi"><b>Along the way:</b> '+l.pois+'</div>';
+  secWrap.appendChild(c);
+});
+
+// ---- Locate ----
+let meMarker=null;
+document.getElementById('locateBtn').addEventListener('click',()=>{
+  if(!navigator.geolocation){alert('Geolocation not supported');return;}
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const ll=[pos.coords.latitude,pos.coords.longitude];
+    if(meMarker)meMarker.setLatLng(ll); else meMarker=L.circleMarker(ll,{radius:8,color:'#fff',weight:3,fillColor:'#1565c0',fillOpacity:1}).addTo(map);
+    map.setView(ll,15);
+  },()=>alert('Could not get your location'),{enableHighAccuracy:true,timeout:8000});
+});
+} // end initApp
+
+// ---- Bottom sheet behavior (wired immediately, independent of the map) ----
+(function(){
+  const sheet=document.getElementById('sheet'), grip=document.getElementById('grip');
+  grip.addEventListener('click',()=>sheet.classList.toggle('open'));
+  document.getElementById('legendBtn').addEventListener('click',()=>sheet.classList.toggle('open'));
+})();
+</script>
+</body>
+</html>

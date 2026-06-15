@@ -1,0 +1,15 @@
+# Claude Code / preview tooling
+.claude/
+.DS_Store
+
+# Build & research scratch data (not needed to serve the site)
+area.json
+area2.json
+closures.json
+closure_*.json
+conestee.json
+food.json
+landmarks.json
+sections.json
+simp.json
+srt_conestee_route.json
