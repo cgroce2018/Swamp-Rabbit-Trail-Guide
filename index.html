@@ -438,6 +438,9 @@ function tripInfo(p){
 }
 
 const routeLayer=L.layerGroup().addTo(map);
+let routePopup=null;
+// Closing the route card resets the map (removes the "You" marker + highlighted route).
+map.on('popupclose',e=>{ if(e.popup===routePopup){ routeLayer.clearLayers(); routePopup=null; } });
 function showRoute(lat,lon,name){
   routeLayer.clearLayers();
   closePanel();
@@ -464,8 +467,9 @@ function showRoute(lat,lon,name){
   const mi=(info.total/1609.34).toFixed(2);
   const walk=Math.max(1,Math.round(info.total/1.35/60)), bike=Math.max(1,Math.round(info.total/4.5/60));
   const note=info.reachable?'':'<br><span style="color:#b71c1c">last stretch is off-trail (straight line)</span>';
-  L.popup({autoPan:true}).setLatLng([lat,lon])
-    .setContent('<span class="pcat">Route from where you tapped</span><br><b>'+name+'</b><br><b>'+mi+' mi</b> via the trail · Walk ~'+walk+' min · Bike ~'+bike+' min'+note).openOn(map);
+  routePopup=L.popup({autoPan:true}).setLatLng([lat,lon])
+    .setContent('<span class="pcat">Route from where you tapped</span><br><b>'+name+'</b><br><b>'+mi+' mi</b> via the trail · Walk ~'+walk+' min · Bike ~'+bike+' min'+note);
+  routePopup.openOn(map);
   map.fitBounds(L.latLngBounds(pts).pad(0.25));
 }
 
