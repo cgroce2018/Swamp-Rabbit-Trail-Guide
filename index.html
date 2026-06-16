@@ -42,6 +42,8 @@
     cursor:pointer;color:var(--ink-2);padding:0;}
   .fab svg{width:22px;height:22px;fill:currentColor;}
   .fab:active{background:var(--surface-2);}
+  .fab.busy{opacity:.55;pointer-events:none;animation:fabpulse 1s ease-in-out infinite;}
+  @keyframes fabpulse{0%,100%{opacity:.45;}50%{opacity:.8;}}
   #locateBtn{right:14px;bottom:calc(var(--sheet-peek) + 16px);}
   #legendBtn{right:14px;bottom:calc(var(--sheet-peek) + 70px);}
 
@@ -568,14 +570,45 @@ LINES.forEach(l=>{
 });
 
 // ---- Locate ----
-let meMarker=null;
-document.getElementById('locateBtn').addEventListener('click',()=>{
-  if(!navigator.geolocation){alert('Geolocation not supported');return;}
-  navigator.geolocation.getCurrentPosition(pos=>{
-    const ll=[pos.coords.latitude,pos.coords.longitude];
-    if(meMarker)meMarker.setLatLng(ll); else meMarker=L.circleMarker(ll,{radius:8,color:'#fff',weight:3,fillColor:'#1565c0',fillOpacity:1}).addTo(map);
-    map.setView(ll,15);
-  },()=>alert('Could not get your location'),{enableHighAccuracy:true,timeout:8000});
+let meMarker=null, meCircle=null;
+const locateBtn=document.getElementById('locateBtn');
+function onLocated(pos){
+  locateBtn.classList.remove('busy');
+  const ll=[pos.coords.latitude,pos.coords.longitude], acc=pos.coords.accuracy||0;
+  if(meMarker){ meMarker.setLatLng(ll); meCircle.setLatLng(ll).setRadius(acc); }
+  else{
+    meCircle=L.circle(ll,{radius:acc,color:'#1565c0',weight:1,fillColor:'#1565c0',fillOpacity:.12,interactive:false}).addTo(map);
+    meMarker=L.circleMarker(ll,{radius:8,color:'#fff',weight:3,fillColor:'#1565c0',fillOpacity:1,interactive:false}).addTo(map);
+  }
+  map.setView(ll, Math.max(15, map.getZoom()));
+}
+function onLocateError(err, retried){
+  // On timeout / position-unavailable, retry once with low accuracy (Wi-Fi/cell — faster, works indoors)
+  if(!retried && err && (err.code===err.TIMEOUT || err.code===err.POSITION_UNAVAILABLE)){
+    navigator.geolocation.getCurrentPosition(onLocated, e=>onLocateError(e,true),
+      {enableHighAccuracy:false, timeout:20000, maximumAge:300000});
+    return;
+  }
+  locateBtn.classList.remove('busy');
+  let msg='Could not get your location.';
+  if(err){
+    if(err.code===err.PERMISSION_DENIED)
+      msg='Location is blocked for this site.\n\niPhone: Settings → Privacy & Security → Location Services → on, then Safari → While Using. Reload and tap “Allow”.\nAndroid/Chrome: tap the lock icon in the address bar → Permissions → Location → Allow.';
+    else if(err.code===err.POSITION_UNAVAILABLE)
+      msg='Your location is unavailable right now. Make sure Location Services are on and try again (a clear view of the sky helps).';
+    else if(err.code===err.TIMEOUT)
+      msg='Locating timed out — it can take a moment to get a GPS fix. Please try again.';
+  }
+  alert(msg);
+}
+locateBtn.addEventListener('click',()=>{
+  if(!navigator.geolocation){ alert('Location isn’t supported by this browser.'); return; }
+  if(!window.isSecureContext && location.protocol!=='https:' && location.hostname!=='localhost'){
+    alert('Location needs a secure (https) connection. Open the site at https://www.swamprabbittrailguide.com'); return;
+  }
+  locateBtn.classList.add('busy');
+  navigator.geolocation.getCurrentPosition(onLocated, e=>onLocateError(e,false),
+    {enableHighAccuracy:true, timeout:12000, maximumAge:60000});
 });
 } // end initApp
 
