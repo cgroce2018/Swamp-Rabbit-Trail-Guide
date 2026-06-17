@@ -80,6 +80,10 @@
   .toggle-row input:checked::after{transform:translateX(16px);}
 
   h2.sec{font-size:11px;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);font-weight:700;margin:18px 4px 8px;}
+  .panel-filter{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px;padding-bottom:12px;border-bottom:1px solid var(--line);}
+  .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--surface);color:var(--ink-2);border-radius:999px;padding:7px 13px;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s;}
+  .chip svg{width:15px;height:15px;fill:currentColor;}
+  .chip[aria-pressed="false"]{opacity:.5;}
   .card{border:1px solid var(--border);border-radius:12px;padding:13px;margin:9px 0;background:var(--surface);}
   .card .head{display:flex;align-items:center;gap:9px;}
   .card .dot{width:12px;height:12px;border-radius:3px;flex:0 0 auto;}
@@ -356,10 +360,11 @@ const closureLayer=L.layerGroup().addTo(map);
   ).addTo(closureLayer);
 });
 
-// ---- POI markers ----
-// Parks & landmarks stay visible at all zooms; the denser food/shop pins only appear when zoomed in.
-const poiMainLayer=L.layerGroup().addTo(map);   // park + landmark
-const poiDetailLayer=L.layerGroup();            // food + shop (zoom-gated)
+// ---- POI markers (one layer per category, so they can be filtered) ----
+const POI_CATS=['park','food','shop','landmark'];
+const POI_CAT_LABEL={park:'Parks',food:'Food',shop:'Shops',landmark:'Landmarks'};
+const poiCatLayer={park:L.layerGroup(),food:L.layerGroup(),shop:L.layerGroup(),landmark:L.layerGroup()};
+const poiCatOn={park:true,food:true,shop:true,landmark:true};   // category filter state
 const DETAIL_ZOOM=14;
 let poisEnabled=true;
 const markerByName={};
@@ -369,13 +374,19 @@ SRT_POIS.forEach(p=>{
     iconSize:[30,38],iconAnchor:[15,38],popupAnchor:[0,-34]});
   const m=L.marker([p.lat,p.lon],{icon});
   m.on('click',e=>{L.DomEvent.stopPropagation(e);openPanelAt(L.latLng(p.lat,p.lon),p.name);});
-  m.addTo((p.category==='food'||p.category==='shop')?poiDetailLayer:poiMainLayer);
+  m.addTo(poiCatLayer[p.category]||poiCatLayer.landmark);
   markerByName[p.name]=m;
 });
 function updatePoiVisibility(){
-  if(!poisEnabled){map.removeLayer(poiMainLayer);map.removeLayer(poiDetailLayer);return;}
-  map.addLayer(poiMainLayer);
-  if(map.getZoom()>=DETAIL_ZOOM)map.addLayer(poiDetailLayer); else map.removeLayer(poiDetailLayer);
+  const allOn=POI_CATS.every(k=>poiCatOn[k]);
+  POI_CATS.forEach(cat=>{
+    const lay=poiCatLayer[cat];
+    let show=poisEnabled && poiCatOn[cat];
+    // when nothing is filtered, the dense food/shop pins stay zoom-gated to reduce clutter;
+    // once the user narrows the filter, show the selected types at every zoom.
+    if(show && allOn && (cat==='food'||cat==='shop')) show=map.getZoom()>=DETAIL_ZOOM;
+    if(show){ if(!map.hasLayer(lay))map.addLayer(lay); } else { if(map.hasLayer(lay))map.removeLayer(lay); }
+  });
 }
 map.on('zoomend',updatePoiVisibility);
 
@@ -505,16 +516,25 @@ function openPanelAt(latlng,focusName){
   document.getElementById('panelTitle').textContent='Points of interest';
   const body=document.getElementById('panelBody');
   ensureDijk();
-  // filter by the 5-mile geographic radius (the circle), but label & sort by trail distance
+  // filter by the 2-mile geographic radius (the circle) + the active category filter,
+  // but label & sort by trail distance
   let near=SRT_POIS.map(p=>({p,straight:hav(latlng.lat,latlng.lng,p.lat,p.lon),trip:tripInfo(p)}))
-                   .filter(o=>o.straight<=RADIUS_M).sort((a,b)=>a.trip.total-b.trip.total);
+                   .filter(o=>o.straight<=RADIUS_M && poiCatOn[o.p.category]).sort((a,b)=>a.trip.total-b.trip.total);
   if(focusName) near.sort((a,b)=>(a.p.name===focusName?-1:0)-(b.p.name===focusName?-1:0));
+  const filtered=!POI_CATS.every(k=>poiCatOn[k]);
+  // category filter chips, shown at the top of this panel
+  const chipsHtml='<div class="panel-filter">'+POI_CATS.map(cat=>{
+    const on=poiCatOn[cat];
+    const st=on?('background:'+POI_COLOR[cat]+';border-color:'+POI_COLOR[cat]+';color:#fff'):'';
+    return '<button type="button" class="chip" data-cat="'+cat+'" aria-pressed="'+(on?'true':'false')+'" style="'+st+'">'
+      +glyph(CAT_ICON[cat],15)+'<span>'+POI_CAT_LABEL[cat]+'</span></button>';
+  }).join('')+'</div>';
   if(!near.length){
     document.getElementById('panelRoute').textContent='Within '+RADIUS_MI+' miles of the spot you tapped';
-    body.innerHTML='<div class="panel-empty">No catalogued points of interest within '+RADIUS_MI+' miles of here.<br>Try tapping a busier stretch of the trail (downtown Greenville or Travelers Rest).</div>';
+    body.innerHTML=chipsHtml+'<div class="panel-empty">No '+(filtered?'matching ':'')+'points of interest within '+RADIUS_MI+' miles of here.'+(filtered?'<br>Try turning more categories on above.':'<br>Try tapping a busier stretch of the trail (downtown Greenville or Travelers Rest).')+'</div>';
   } else {
     document.getElementById('panelRoute').textContent=near.length+' stop'+(near.length>1?'s':'')+' within '+RADIUS_MI+' miles · nearest by trail';
-    body.innerHTML = near.map(({p,trip})=>{
+    body.innerHTML = chipsHtml + near.map(({p,trip})=>{
       const pc=POI_COLOR[p.category]||'#1565c0';
       const mi=(trip.total/1609.34).toFixed(1);
       const distLabel = trip.reachable ? mi+' mi via trail' : mi+' mi (partly off-trail)';
@@ -530,6 +550,12 @@ function openPanelAt(latlng,focusName){
   document.getElementById('sheet').classList.remove('open');
   document.getElementById('panelHint').style.opacity='0';
   body.scrollTop=0;
+  // wire filter chips — toggle category, refresh map markers + this list
+  body.querySelectorAll('.panel-filter .chip').forEach(b=>b.onclick=()=>{
+    poiCatOn[b.dataset.cat]=!poiCatOn[b.dataset.cat];
+    updatePoiVisibility();
+    openPanelAt(routeOrigin,focusName);
+  });
   // wire action buttons
   body.querySelectorAll('.go').forEach(b=>b.onclick=()=>showRoute(+b.dataset.lat,+b.dataset.lon,b.dataset.name));
   body.querySelectorAll('.dir').forEach(b=>b.onclick=()=>{
