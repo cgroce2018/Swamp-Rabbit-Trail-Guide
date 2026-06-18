@@ -236,6 +236,18 @@ function startWhenReady(){
   catch(err){ showErr('Map failed to start', (err&&err.message)||String(err)); }
 }
 
+// MapLibre GL (+ Leaflet adapter) powers the free, unlimited OpenFreeMap basemap.
+// If any of it fails to load, MAPLIBRE_OK stays false and initApp falls back to raster tiles.
+function loadMapLibre(){
+  loadCss('https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css');
+  loadScript('https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js', function(){
+    loadScript('https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.3/leaflet-maplibre-gl.js', function(){
+      window.MAPLIBRE_OK = !!(window.maplibregl && L.maplibreGL);
+      startWhenReady();
+    }, function(){ window.MAPLIBRE_OK=false; startWhenReady(); });
+  }, function(){ window.MAPLIBRE_OK=false; startWhenReady(); });
+}
+
 (function bootLeaflet(){
   var CDNS=[
     {css:'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', js:'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'},
@@ -247,7 +259,7 @@ function startWhenReady(){
     if(i>=CDNS.length){showErr('Map library could not load','Leaflet failed to download from all sources — check your internet connection, then reload.');return;}
     var c=CDNS[i++];
     loadCss(c.css);
-    loadScript(c.js, function(){ if(window.L) startWhenReady(); else tryNext(); }, tryNext);
+    loadScript(c.js, function(){ if(window.L) loadMapLibre(); else tryNext(); }, tryNext);
   }
   tryNext();
 })();
@@ -293,32 +305,22 @@ function pinSvg(color,iconName){
 function initApp(){
 const map=L.map('map',{zoomControl:false}).setView([34.86,-82.40],12);
 L.control.zoom({position:'bottomleft'}).addTo(map);
-// ── Basemap (free-tier provider) ───────────────────────────────────────────
-// 1. Create a free MapTiler account → https://cloud.maptiler.com/  (free tier ~100k tile loads/mo)
-// 2. Copy your key and paste it below.
-// 3. In the MapTiler dashboard, restrict the key to your domain (Origins allowlist) so it can't be abused.
-// If the key is left blank the map falls back to keyless OpenStreetMap tiles so it still works.
-//   Prefer Stadia Maps instead? Swap STREETS_URL for:
-//   'https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.png?api_key='+TILE_KEY  (free, also key/domain-restricted)
-const TILE_KEY='8lToP1AFQIUf63sNCzdU';   // ← MapTiler key (restrict to your domain in the MapTiler dashboard)
-const hasKey=!!TILE_KEY;
-
-const streets=hasKey
-  ? L.tileLayer('https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key='+TILE_KEY,
-      {maxZoom:20, tileSize:512, zoomOffset:-1, crossOrigin:true,
-       attribution:'&copy; <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'})
-  : L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-      {maxZoom:19, attribution:'&copy; OpenStreetMap contributors'});
-
-const light=hasKey
-  ? L.tileLayer('https://api.maptiler.com/maps/dataviz-light/{z}/{x}/{y}.png?key='+TILE_KEY,
-      {maxZoom:20, tileSize:512, zoomOffset:-1, crossOrigin:true,
-       attribution:'&copy; <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> &copy; OpenStreetMap'})
-  : L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-      {maxZoom:20, subdomains:'abcd', attribution:'&copy; OpenStreetMap &copy; CARTO'});
-
-streets.addTo(map);
-L.control.layers({'Streets (roads)':streets,'Light':light},null,{position:'topleft',collapsed:true}).addTo(map);
+// ── Basemap ─────────────────────────────────────────────────────────────────
+// Primary: OpenFreeMap (free, no API key, no request limits) rendered as vector
+// tiles via MapLibre GL inside Leaflet. If MapLibre/OpenFreeMap can't load, fall
+// back to keyless raster tiles so the map still works.
+//   OFM styles: liberty (road-forward), bright, positron — change OFM_STYLE to swap.
+const OFM_STYLE='https://tiles.openfreemap.org/styles/liberty';
+if(window.MAPLIBRE_OK){
+  try{
+    L.maplibreGL({style:OFM_STYLE, attribution:'&copy; <a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'}).addTo(map);
+  }catch(e){ window.MAPLIBRE_OK=false; }
+}
+if(!window.MAPLIBRE_OK){
+  // emergency raster fallback (only used if the vector basemap fails to load)
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    {maxZoom:20, subdomains:'abcd', attribution:'&copy; OpenStreetMap &copy; CARTO'}).addTo(map);
+}
 
 // ---- Trail layers grouped by line ----
 const layerByLine={};
