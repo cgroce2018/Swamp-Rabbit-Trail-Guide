@@ -396,6 +396,7 @@ const POI_CATS=['parking','restroom','water','park','food','shop','landmark'];
 const POI_CAT_LABEL={park:'Parks',food:'Food',shop:'Shops',landmark:'Landmarks',restroom:'Restrooms',water:'Water',parking:'Parking'};
 const poiCatLayer={park:L.layerGroup(),food:L.layerGroup(),shop:L.layerGroup(),landmark:L.layerGroup(),restroom:L.layerGroup(),water:L.layerGroup(),parking:L.layerGroup()};
 const poiCatOn={park:true,food:true,shop:true,landmark:true,restroom:true,water:true,parking:true};   // category filter state
+const catToggle={};   // category -> its legend toggle checkbox (amenity toggles), kept in sync on reset
 const DETAIL_ZOOM=14;
 let poisEnabled=true;
 let dogOnly=false;               // "Dog friendly" filter modifier (cross-cutting, not a category)
@@ -635,7 +636,19 @@ function openPanelAt(latlng,focusName){
     window.open('https://www.google.com/maps/dir/?api=1&destination='+b.dataset.dir,'_blank');
   });
 }
-function closePanel(){panel.classList.remove('open');clickLayer.clearLayers();}
+// Closing the POI panel clears any chip filtering: every category goes back on and the
+// "Dog friendly" filter off, so markers hidden via the panel reappear on the map.
+function resetPoiFilters(){
+  POI_CATS.forEach(function(cat){ poiCatOn[cat]=true; if(catToggle[cat]) catToggle[cat].checked=true; });
+  if(dogOnly) setDogOnly(false);   // also unchecks the Dog-friendly legend toggle
+  updatePoiVisibility();
+}
+function closePanel(){
+  var wasOpen=panel.classList.contains('open');
+  panel.classList.remove('open');
+  clickLayer.clearLayers();
+  if(wasOpen) resetPoiFilters();   // only reset when an actually-open panel is dismissed
+}
 document.getElementById('panelClose').addEventListener('click',closePanel);
 // Tapping the trail line opens the local POI search; tapping empty map just closes the panel
 map.on('click',closePanel);
@@ -663,37 +676,18 @@ addToggle('Currently closed','Active closures & detours','<span class="swatch cl
   on=>{ on?map.addLayer(closureLayer):map.removeLayer(closureLayer); });
 addToggle('Points of interest','Food/shops appear when you zoom in','<span class="swatch" style="background:#1565c0"></span>',true,
   on=>{ poisEnabled=on; updatePoiVisibility(); });
-addToggle('Parking','Trailhead parking lots',
+catToggle.parking=addToggle('Parking','Trailhead parking lots',
   '<span class="amen-swatch" style="background:'+POI_COLOR.parking+'">'+glyph('parking',13)+'</span>',true,
   on=>{ poiCatOn.parking=on; updatePoiVisibility(); });
-addToggle('Restrooms','Public restrooms along the trail',
+catToggle.restroom=addToggle('Restrooms','Public restrooms along the trail',
   '<span class="amen-swatch" style="background:'+POI_COLOR.restroom+'">'+glyph('restroom',13)+'</span>',true,
   on=>{ poiCatOn.restroom=on; updatePoiVisibility(); });
-addToggle('Water refill stations','Drinking water & refill points',
+catToggle.water=addToggle('Water refill stations','Drinking water & refill points',
   '<span class="amen-swatch" style="background:'+POI_COLOR.water+'">'+glyph('water',13)+'</span>',true,
   on=>{ poiCatOn.water=on; updatePoiVisibility(); });
 dogToggle=addToggle('Dog friendly','Show only dog-welcome stops (🐾 = dog friendly)',
   '<span class="amen-swatch" style="background:#6d4c41">'+pawSvg(13)+'</span>',false,
   on=>{ setDogOnly(on); if(panel.classList.contains('open')&&routeOrigin) openPanelAt(routeOrigin); });
-
-// ---- Reset when the drawer closes ----
-// Closing the drawer clears any filtering done in it: every line/category is switched
-// back on (and the "Dog friendly" filter off) so nothing stays hidden on the map.
-function resetDrawerFilters(){
-  document.querySelectorAll('#toggles input[type="checkbox"]').forEach(function(inp){
-    var want = (inp!==dogToggle);   // all toggles default ON; the "Dog friendly" filter defaults OFF
-    if(inp.checked!==want){ inp.checked=want; inp.dispatchEvent(new Event('change')); }
-  });
-}
-const sheetEl=document.getElementById('sheet');
-let sheetWasOpen=sheetEl.classList.contains('open');
-new MutationObserver(function(){
-  const open=sheetEl.classList.contains('open');
-  if(sheetWasOpen && !open) resetDrawerFilters();   // fire only on the open→closed edge
-  sheetWasOpen=open;
-}).observe(sheetEl,{attributes:true,attributeFilter:['class']});
-// tapping the map outside the drawer dismisses it (which triggers the reset above)
-map.on('click',function(){ sheetEl.classList.remove('open'); });
 
 // ---- Section guide cards ----
 const secWrap=document.getElementById('sections');
