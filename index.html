@@ -211,7 +211,6 @@
   </div>
 </div>
 
-<script src="data.js"></script>
 <script>
 function showErr(title,msg){
   var b=document.getElementById('errbar');
@@ -241,7 +240,15 @@ function loadScript(src,onok,onfail){
 }
 function loadCss(href){var l=document.createElement('link');l.rel='stylesheet';l.href=href;document.head.appendChild(l);}
 
+// Load the trail/POI data with a per-load cache-bust so a freshly deployed data.js
+// shows up immediately for everyone, even while the HTML itself is still served from cache.
+var DATA_READY=false, MAP_READY=false;
+function loadData(){
+  loadScript('data.js?v='+Date.now(), function(){ DATA_READY=true; startWhenReady(); },
+    function(){ showErr('Trail data missing','Could not load data.js — check your connection and reload.'); });
+}
 function startWhenReady(){
+  if(!(DATA_READY && MAP_READY)) return;   // wait until both the data and the map libraries are loaded
   if(!window.SRT_TRAIL){showErr('Trail data missing','Could not load data.js — make sure it sits next to index.html.');return;}
   try{ initApp(); }
   catch(err){ showErr('Map failed to start', (err&&err.message)||String(err)); }
@@ -254,9 +261,9 @@ function loadMapLibre(){
   loadScript('https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js', function(){
     loadScript('https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.3/leaflet-maplibre-gl.js', function(){
       window.MAPLIBRE_OK = !!(window.maplibregl && L.maplibreGL);
-      startWhenReady();
-    }, function(){ window.MAPLIBRE_OK=false; startWhenReady(); });
-  }, function(){ window.MAPLIBRE_OK=false; startWhenReady(); });
+      MAP_READY=true; startWhenReady();
+    }, function(){ window.MAPLIBRE_OK=false; MAP_READY=true; startWhenReady(); });
+  }, function(){ window.MAPLIBRE_OK=false; MAP_READY=true; startWhenReady(); });
 }
 
 (function bootLeaflet(){
@@ -274,6 +281,7 @@ function loadMapLibre(){
   }
   tryNext();
 })();
+loadData();   // fetch data.js (cache-busted) in parallel with the map libraries
 
 const COLORS={green:'#2e7d32',blue:'#1565c0',orange:'#ef6c00',gold:'#f9a825',strip:'#e08a00',tram:'#6a1b9a',connector:'#00897b',main:'#5d6d7e'};
 const CONSTR='#e53935';
