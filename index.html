@@ -35,6 +35,28 @@
   #topbar .ttl{min-width:0;}
   #topbar h1{margin:0;font-size:16px;font-weight:700;letter-spacing:-.2px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   #topbar p{margin:1px 0 0;font-size:11px;color:var(--muted);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #topbar .support-btn{flex:0 0 auto;margin-left:auto;border:none;background:var(--accent);color:#fff;
+    font-weight:700;font-size:13px;padding:8px 13px;border-radius:999px;cursor:pointer;display:flex;
+    align-items:center;gap:6px;box-shadow:var(--shadow-1);white-space:nowrap;}
+  #topbar .support-btn svg{width:15px;height:15px;fill:#fff;}
+  #topbar .support-btn:active{filter:brightness(.95);}
+
+  /* Support / donate modal */
+  .modal-overlay{position:fixed;inset:0;z-index:1000;background:rgba(15,18,22,.5);
+    display:none;align-items:center;justify-content:center;
+    padding:calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 16px);}
+  .modal-overlay.open{display:flex;}
+  .modal-card{background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-2);
+    border:1px solid var(--border);width:100%;max-width:460px;max-height:100%;overflow-y:auto;
+    -webkit-overflow-scrolling:touch;padding:20px 20px 16px;position:relative;}
+  .modal-card h2{margin:0 38px 8px 0;font-size:20px;font-weight:800;letter-spacing:-.2px;color:var(--ink);}
+  .modal-desc{margin:0 0 14px;font-size:13.5px;line-height:1.55;color:var(--ink-2);}
+  .modal-close{position:absolute;top:12px;right:12px;width:34px;height:34px;border:1px solid var(--border);
+    border-radius:9px;background:var(--surface);color:var(--ink-2);cursor:pointer;display:flex;
+    align-items:center;justify-content:center;padding:0;}
+  .modal-close svg{width:18px;height:18px;fill:currentColor;}
+  .modal-close:active{background:var(--surface-2);}
+  #kofiframe{display:block;border-radius:10px;}
 
   /* Floating action buttons — flat */
   .fab{position:absolute;z-index:500;width:44px;height:44px;border-radius:12px;border:1px solid var(--border);
@@ -177,6 +199,19 @@
   <div class="ttl">
     <h1>Swamp Rabbit Trail Guide</h1>
     <p>Greenville County, SC</p>
+  </div>
+  <button id="supportBtn" class="support-btn" type="button" aria-haspopup="dialog">
+    <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+    Support Us
+  </button>
+</div>
+
+<div id="supportModal" class="modal-overlay" role="presentation">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="supportTitle">
+    <button id="supportClose" class="modal-close" type="button" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M18.3 5.71L12 12.01 5.7 5.71 4.29 7.12 10.59 13.42 4.29 19.72 5.7 21.13 12 14.83l6.3 6.3 1.41-1.41-6.3-6.3 6.3-6.3z"/></svg></button>
+    <h2 id="supportTitle">Support Us</h2>
+    <p class="modal-desc">We provide this service for free and without ads and we hope to keep it that way, but there are some expenses involved in keeping this guide up to date. Please consider supporting us, we would greatly appreciate it!</p>
+    <iframe id="kofiframe" data-src="https://ko-fi.com/swamprabbittrailguide/?hidefeed=true&amp;widget=true&amp;embed=true&amp;preview=true" style="border:none;width:100%;padding:4px;background:#f9f9f9;" height="712" title="swamprabbittrailguide"></iframe>
   </div>
 </div>
 
@@ -763,6 +798,22 @@ function routeFromUser(lat,lon,name){
   grip.addEventListener('click',()=>sheet.classList.toggle('open'));
   document.getElementById('legendBtn').addEventListener('click',()=>sheet.classList.toggle('open'));
   document.getElementById('sheetClose').addEventListener('click',e=>{e.stopPropagation();sheet.classList.remove('open');});
+})();
+
+// ---- Support / donate modal (wired immediately, independent of the map) ----
+(function(){
+  const btn=document.getElementById('supportBtn'), modal=document.getElementById('supportModal'),
+        closeBtn=document.getElementById('supportClose'), kofi=document.getElementById('kofiframe');
+  let loaded=false;
+  function open(){
+    if(!loaded && kofi){ kofi.src=kofi.dataset.src; loaded=true; }  // lazy-load Ko-fi on first open
+    modal.classList.add('open');
+  }
+  function close(){ modal.classList.remove('open'); }
+  btn.addEventListener('click',open);
+  closeBtn.addEventListener('click',close);
+  modal.addEventListener('click',e=>{ if(e.target===modal) close(); });  // tap the backdrop to close
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape' && modal.classList.contains('open')) close(); });
 })();
 </script>
 </body>
