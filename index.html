@@ -676,6 +676,25 @@ dogToggle=addToggle('Dog friendly','Show only dog-welcome stops (🐾 = dog frie
   '<span class="amen-swatch" style="background:#6d4c41">'+pawSvg(13)+'</span>',false,
   on=>{ setDogOnly(on); if(panel.classList.contains('open')&&routeOrigin) openPanelAt(routeOrigin); });
 
+// ---- Reset when the drawer closes ----
+// Closing the drawer clears any filtering done in it: every line/category is switched
+// back on (and the "Dog friendly" filter off) so nothing stays hidden on the map.
+function resetDrawerFilters(){
+  document.querySelectorAll('#toggles input[type="checkbox"]').forEach(function(inp){
+    var want = (inp!==dogToggle);   // all toggles default ON; the "Dog friendly" filter defaults OFF
+    if(inp.checked!==want){ inp.checked=want; inp.dispatchEvent(new Event('change')); }
+  });
+}
+const sheetEl=document.getElementById('sheet');
+let sheetWasOpen=sheetEl.classList.contains('open');
+new MutationObserver(function(){
+  const open=sheetEl.classList.contains('open');
+  if(sheetWasOpen && !open) resetDrawerFilters();   // fire only on the open→closed edge
+  sheetWasOpen=open;
+}).observe(sheetEl,{attributes:true,attributeFilter:['class']});
+// tapping the map outside the drawer dismisses it (which triggers the reset above)
+map.on('click',function(){ sheetEl.classList.remove('open'); });
+
 // ---- Section guide cards ----
 const secWrap=document.getElementById('sections');
 LINES.forEach(l=>{
