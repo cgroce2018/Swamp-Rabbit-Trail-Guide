@@ -69,6 +69,8 @@
   .toggle-row{display:flex;align-items:center;gap:11px;padding:9px 8px;border-radius:var(--radius);cursor:pointer;}
   .toggle-row:active{background:var(--surface-2);}
   .swatch{flex:0 0 auto;width:26px;height:6px;border-radius:3px;}
+  .amen-swatch{flex:0 0 auto;width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;}
+  .amen-swatch svg{fill:#fff;}
   .swatch.dash{background:none;border-radius:0;height:0;border-top:5px dashed var(--constr);}
   .swatch.closed{background:none;border-radius:0;height:0;border-top:5px dashed var(--danger);}
   .toggle-row .meta{flex:1;min-width:0;}
@@ -125,11 +127,17 @@
   #panelBody{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 14px 24px;}
 
   .poi-card{border:1px solid var(--border);border-radius:12px;padding:13px;margin:11px 0;background:var(--surface);}
+  .poi-card.detail{border-width:1.5px;margin-top:4px;box-shadow:var(--shadow-1);}
+  .poi-card.detail .rp-ic{width:46px;height:46px;}
+  .poi-card.detail .rp-ic svg{width:24px;height:24px;}
+  .poi-card.detail h3{font-size:17px;}
   .rp-head{display:flex;gap:11px;align-items:flex-start;}
   .rp-ic{flex:0 0 auto;width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;}
   .rp-ic svg{width:20px;height:20px;fill:#fff;}
   .poi-card h3{margin:0;font-size:15px;line-height:1.25;font-weight:700;}
   .rp-cat{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:700;margin-top:3px;}
+  .rp-dog{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;color:#6d4c41;margin-top:4px;}
+  .rp-dog svg{fill:#6d4c41;}
   .rp-blurb{font-size:12.5px;color:var(--ink-2);line-height:1.5;margin:9px 0 0;}
   .panel-tip{background:var(--surface-2);border:1px solid var(--border);color:var(--ink-2);font-size:12.5px;line-height:1.5;border-radius:10px;padding:10px 12px;margin:4px 0 8px;}
   .rp-actions{display:flex;gap:8px;margin-top:12px;}
@@ -144,7 +152,10 @@
   .closed-pin svg{width:17px;height:17px;fill:#fff;}
   .click-dot{width:16px;height:16px;border-radius:50%;background:var(--accent);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);animation:clickpulse 1.6s ease-out infinite;}
   @keyframes clickpulse{0%{box-shadow:0 1px 4px rgba(0,0,0,.45),0 0 0 0 rgba(27,122,59,.45);}70%{box-shadow:0 1px 4px rgba(0,0,0,.45),0 0 0 14px rgba(27,122,59,0);}100%{box-shadow:0 1px 4px rgba(0,0,0,.45),0 0 0 0 rgba(27,122,59,0);}}
+  .poi-pin{position:relative;}
   .poi-pin svg{filter:drop-shadow(0 1px 2px rgba(0,0,0,.35));}
+  .paw-badge{position:absolute;top:-3px;right:-5px;width:17px;height:17px;border-radius:50%;background:#6d4c41;border:1.6px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(0,0,0,.4);}
+  .paw-badge svg{width:11px;height:11px;fill:#fff;filter:none;}
 
   .panel-hint{position:absolute;left:50%;bottom:calc(var(--sheet-peek) + 22px);transform:translateX(-50%);z-index:450;
     background:var(--ink);color:#fff;font-size:12px;font-weight:600;padding:9px 14px;border-radius:10px;
@@ -264,7 +275,7 @@ function loadMapLibre(){
   tryNext();
 })();
 
-const COLORS={green:'#2e7d32',blue:'#1565c0',orange:'#ef6c00',gold:'#f9a825',tram:'#6a1b9a',connector:'#00897b',main:'#5d6d7e'};
+const COLORS={green:'#2e7d32',blue:'#1565c0',orange:'#ef6c00',gold:'#f9a825',strip:'#e08a00',tram:'#6a1b9a',connector:'#00897b',main:'#5d6d7e'};
 const CONSTR='#e53935';
 
 const LINES=[
@@ -274,14 +285,16 @@ const LINES=[
   pois:'Conestee Nature Preserve & boardwalks · Conestee Park · Greenville Technical College · Cleveland Park & Greenville Zoo · Sliding Rock Creek mountain-bike trails'},
  {key:'orange',name:'Orange Line',desc:'Spur · ~1 mi out-and-back',route:'Green Line at W. Washington St → Buncombe Rd',
   pois:'Connects the West End / downtown grid to the main trail'},
- {key:'gold',name:'Gold Line / Golden Strip',desc:'Mauldin · Simpsonville · Fountain Inn',route:'Built strips at Mauldin BridgeWay Station, Simpsonville (Heritage Park), and Fountain Inn — being stitched together into a continuous southern extension',
+ {key:'gold',name:'Gold Line',desc:'Travelers Rest spur',route:'Northern Travelers Rest spur off the Green Line out to the George I. Theisen Family YMCA',
+  pois:'George I. Theisen Family YMCA · north Travelers Rest neighborhoods'},
+ {key:'strip',name:'Golden Strip Line',desc:'Mauldin · Simpsonville · Fountain Inn',route:'Built strips at Mauldin BridgeWay Station, Simpsonville (Heritage Park), and Fountain Inn — being stitched together into a continuous southern extension',
   pois:'Mauldin BridgeWay Station & Gateway Bridge (over I-385) · Simpsonville Heritage Park / CCNB Amphitheatre · Fountain Inn HS · Bryson Elementary (connecting links still under construction — opens ~2027)'},
  {key:'tram',name:'Tram Trail',desc:'Connector loop',route:'Side loop / connector off the Green Line',pois:'Quiet alternate routing & neighborhood access'},
  {key:'connector',name:'Clean Water Connector',desc:'Connector loop',route:'Loop spur off the main trail',pois:'Scenic connector loop'},
  {key:'main',name:'Other trail & spurs',desc:'Unbranded segments',route:'Access spurs, extensions & connectors not assigned a color line',pois:'Trailheads, parking spurs & neighborhood connectors'},
 ];
 
-const POI_COLOR={park:'#2e7d32',food:'#ef6c00',shop:'#6a1b9a',landmark:'#1565c0'};
+const POI_COLOR={park:'#2e7d32',food:'#ef6c00',shop:'#6a1b9a',landmark:'#1565c0',restroom:'#455a64',water:'#0288d1',parking:'#3949ab'};
 
 // ---- Bold SVG icon set (24x24, solid) ----
 const ICON_PATHS={
@@ -289,11 +302,14 @@ const ICON_PATHS={
   food:'M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z',
   shop:'M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm0 10c-2.76 0-5-2.24-5-5h2c0 1.66 1.34 3 3 3s3-1.34 3-3h2c0 2.76-2.24 5-5 5z',
   landmark:'M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z',
+  restroom:'M5.5 22v-7.5H4V9c0-1.1.9-2 2-2h1c1.1 0 2 .9 2 2v5.5H7.5V22h-2zM18 22v-6h3l-2.54-7.63A2 2 0 0016.56 7h-.12a2 2 0 00-1.9 1.37L12 16h3v6h3zM7 6c.83 0 1.5-.67 1.5-1.5S7.83 3 7 3 5.5 3.67 5.5 4.5 6.17 6 7 6zm10 0c.83 0 1.5-.67 1.5-1.5S17.83 3 17 3s-1.5.67-1.5 1.5S16.17 6 17 6z',
+  water:'M12 2c-5.33 4.55-8 8.48-8 11.8 0 4.98 3.8 8.2 8 8.2s8-3.22 8-8.2c0-3.32-2.67-7.25-8-11.8z',
+  parking:'M13 3H6v18h4v-6h3c3.31 0 6-2.69 6-6s-2.69-6-6-6zm.2 8H10V7h3.2c1.1 0 2 .9 2 2s-.9 2-2 2z',
   route:'M21 3 3 10.53v.98l6.84 2.65L12.48 21h.98L21 3z',
   external:'M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z',
   warning:'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z'
 };
-const CAT_ICON={park:'park',food:'food',shop:'shop',landmark:'landmark'};
+const CAT_ICON={park:'park',food:'food',shop:'shop',landmark:'landmark',restroom:'restroom',water:'water',parking:'parking'};
 function glyph(name,size){return '<svg viewBox="0 0 24 24" width="'+(size||20)+'" height="'+(size||20)+'"><path d="'+ICON_PATHS[name]+'"/></svg>';}
 // Flat map pin (teardrop) with a bold white glyph in the head
 function pinSvg(color,iconName){
@@ -301,6 +317,11 @@ function pinSvg(color,iconName){
     +'<path d="M12 1C6.8 1 2.5 5.3 2.5 10.5c0 6.6 9.5 18 9.5 18s9.5-11.4 9.5-18C21.5 5.3 17.2 1 12 1z" fill="'+color+'" stroke="#fff" stroke-width="1.6"/>'
     +'<g transform="translate(6,4.8) scale(0.5)" fill="#fff"><path d="'+ICON_PATHS[iconName]+'"/></g></svg>';
 }
+// Paw print (toe beans + pad) — used for the dog-friendly badge & filter chip. fill comes from CSS.
+function pawSvg(size){var s=size||12;return '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'">'
+  +'<ellipse cx="12" cy="17" rx="5" ry="4.2"/>'
+  +'<circle cx="5.5" cy="11" r="2.3"/><circle cx="9.7" cy="6.7" r="2.4"/>'
+  +'<circle cx="14.3" cy="6.7" r="2.4"/><circle cx="18.5" cy="11" r="2.3"/></svg>';}
 
 function initApp(){
 const map=L.map('map',{zoomControl:false}).setView([34.86,-82.40],12);
@@ -363,33 +384,46 @@ const closureLayer=L.layerGroup().addTo(map);
 });
 
 // ---- POI markers (one layer per category, so they can be filtered) ----
-const POI_CATS=['park','food','shop','landmark'];
-const POI_CAT_LABEL={park:'Parks',food:'Food',shop:'Shops',landmark:'Landmarks'};
-const poiCatLayer={park:L.layerGroup(),food:L.layerGroup(),shop:L.layerGroup(),landmark:L.layerGroup()};
-const poiCatOn={park:true,food:true,shop:true,landmark:true};   // category filter state
+const POI_CATS=['parking','restroom','water','park','food','shop','landmark'];
+const POI_CAT_LABEL={park:'Parks',food:'Food',shop:'Shops',landmark:'Landmarks',restroom:'Restrooms',water:'Water',parking:'Parking'};
+const poiCatLayer={park:L.layerGroup(),food:L.layerGroup(),shop:L.layerGroup(),landmark:L.layerGroup(),restroom:L.layerGroup(),water:L.layerGroup(),parking:L.layerGroup()};
+const poiCatOn={park:true,food:true,shop:true,landmark:true,restroom:true,water:true,parking:true};   // category filter state
 const DETAIL_ZOOM=14;
 let poisEnabled=true;
+let dogOnly=false;               // "Dog friendly" filter modifier (cross-cutting, not a category)
+let dogToggle=null;              // drawer checkbox handle, kept in sync with the panel chip
 const markerByName={};
+const poiMarkers=[];             // {m, cat, dog} — for per-marker dog filtering
 SRT_POIS.forEach(p=>{
   const col=POI_COLOR[p.category]||'#1565c0';
-  const icon=L.divIcon({className:'',html:'<div class="poi-pin">'+pinSvg(col,CAT_ICON[p.category]||'landmark')+'</div>',
+  const paw=p.dog?'<span class="paw-badge">'+pawSvg(11)+'</span>':'';
+  const icon=L.divIcon({className:'',html:'<div class="poi-pin">'+pinSvg(col,CAT_ICON[p.category]||'landmark')+paw+'</div>',
     iconSize:[30,38],iconAnchor:[15,38],popupAnchor:[0,-34]});
   const m=L.marker([p.lat,p.lon],{icon});
   m.on('click',e=>{L.DomEvent.stopPropagation(e);openPanelAt(L.latLng(p.lat,p.lon),p.name);});
-  m.addTo(poiCatLayer[p.category]||poiCatLayer.landmark);
+  const cat=poiCatLayer[p.category]?p.category:'landmark';
+  m.addTo(poiCatLayer[cat]);
   markerByName[p.name]=m;
+  poiMarkers.push({m,cat,dog:!!p.dog});
 });
 function updatePoiVisibility(){
   const allOn=POI_CATS.every(k=>poiCatOn[k]);
+  // dog filter: keep only dog-friendly markers inside their category layers when it's active
+  poiMarkers.forEach(o=>{
+    const want=!dogOnly||o.dog, lay=poiCatLayer[o.cat];
+    if(want){ if(!lay.hasLayer(o.m))lay.addLayer(o.m); } else { if(lay.hasLayer(o.m))lay.removeLayer(o.m); }
+  });
   POI_CATS.forEach(cat=>{
     const lay=poiCatLayer[cat];
     let show=poisEnabled && poiCatOn[cat];
     // when nothing is filtered, the dense food/shop pins stay zoom-gated to reduce clutter;
-    // once the user narrows the filter, show the selected types at every zoom.
-    if(show && allOn && (cat==='food'||cat==='shop')) show=map.getZoom()>=DETAIL_ZOOM;
+    // once the user narrows the filter (incl. the dog filter), show the selected types at every zoom.
+    if(show && allOn && !dogOnly && (cat==='food'||cat==='shop')) show=map.getZoom()>=DETAIL_ZOOM;
     if(show){ if(!map.hasLayer(lay))map.addLayer(lay); } else { if(map.hasLayer(lay))map.removeLayer(lay); }
   });
 }
+// Toggle the dog-friendly filter and keep the drawer checkbox in sync (chip syncs on re-render)
+function setDogOnly(v){ dogOnly=v; updatePoiVisibility(); if(dogToggle)dogToggle.checked=v; }
 map.on('zoomend',updatePoiVisibility);
 
 map.fitBounds(bounds.pad(0.08));
@@ -465,7 +499,7 @@ const routeLayer=L.layerGroup().addTo(map);
 let routePopup=null;
 // Closing the route card resets the map (removes the "You" marker + highlighted route).
 map.on('popupclose',e=>{ if(e.popup===routePopup){ routeLayer.clearLayers(); routePopup=null; } });
-function showRoute(lat,lon,name){
+function showRoute(lat,lon,name,originLabel){
   routeLayer.clearLayers();
   closePanel();
   if(!routeOrigin){ map.flyTo([lat,lon],16); return; }
@@ -492,7 +526,7 @@ function showRoute(lat,lon,name){
   const walk=Math.max(1,Math.round(info.total/1.35/60)), bike=Math.max(1,Math.round(info.total/4.5/60));
   const note=info.reachable?'':'<br><span style="color:#b71c1c">last stretch is off-trail (straight line)</span>';
   routePopup=L.popup({autoPan:true}).setLatLng([lat,lon])
-    .setContent('<span class="pcat">Route from where you tapped</span><br><b>'+name+'</b><br><b>'+mi+' mi</b> via the trail · Walk ~'+walk+' min · Bike ~'+bike+' min'+note);
+    .setContent('<span class="pcat">Route from '+(originLabel||'where you tapped')+'</span><br><b>'+name+'</b><br><b>'+mi+' mi</b> via the trail · Walk ~'+walk+' min · Bike ~'+bike+' min'+note);
   routePopup.openOn(map);
   map.fitBounds(L.latLngBounds(pts).pad(0.25));
 }
@@ -514,39 +548,67 @@ function setIndicator(latlng){
 function openPanelAt(latlng,focusName){
   routeOrigin=latlng;
   setIndicator(latlng);
-  document.getElementById('panelHead').style.setProperty('--ph','var(--accent)');
-  document.getElementById('panelTitle').textContent='Points of interest';
   const body=document.getElementById('panelBody');
   ensureDijk();
-  // filter by the 2-mile geographic radius (the circle) + the active category filter,
-  // but label & sort by trail distance
-  let near=SRT_POIS.map(p=>({p,straight:hav(latlng.lat,latlng.lng,p.lat,p.lon),trip:tripInfo(p)}))
-                   .filter(o=>o.straight<=RADIUS_M && poiCatOn[o.p.category]).sort((a,b)=>a.trip.total-b.trip.total);
-  if(focusName) near.sort((a,b)=>(a.p.name===focusName?-1:0)-(b.p.name===focusName?-1:0));
-  const filtered=!POI_CATS.every(k=>poiCatOn[k]);
-  // category filter chips, shown at the top of this panel
+  const focusPoi = focusName ? SRT_POIS.find(p=>p.name===focusName) : null;
+  // nearby within 2 mi (the focused POI, if any, is shown separately as a detail card)
+  const near=SRT_POIS.map(p=>({p,straight:hav(latlng.lat,latlng.lng,p.lat,p.lon),trip:tripInfo(p)}))
+                   .filter(o=>o.straight<=RADIUS_M && poiCatOn[o.p.category] && (!dogOnly||o.p.dog) && (!focusPoi||o.p.name!==focusName))
+                   .sort((a,b)=>a.trip.total-b.trip.total);
+  const filtered=!POI_CATS.every(k=>poiCatOn[k]) || dogOnly;
+  // category filter chips + a cross-cutting "Dog friendly" chip, shown at the top of this panel
+  const dogSt=dogOnly?'background:#6d4c41;border-color:#6d4c41;color:#fff':'';
   const chipsHtml='<div class="panel-filter">'+POI_CATS.map(cat=>{
     const on=poiCatOn[cat];
     const st=on?('background:'+POI_COLOR[cat]+';border-color:'+POI_COLOR[cat]+';color:#fff'):'';
     return '<button type="button" class="chip" data-cat="'+cat+'" aria-pressed="'+(on?'true':'false')+'" style="'+st+'">'
       +glyph(CAT_ICON[cat],15)+'<span>'+POI_CAT_LABEL[cat]+'</span></button>';
-  }).join('')+'</div>';
-  if(!near.length){
+  }).join('')
+    +'<button type="button" class="chip" data-dog="1" aria-pressed="'+(dogOnly?'true':'false')+'" style="'+dogSt+'">'
+    +pawSvg(15)+'<span>Dog friendly</span></button>'
+    +'</div>';
+  // one nearby-stop card (also reused under "Other stops" when a POI is focused)
+  function cardHtml(p,trip){
+    const pc=POI_COLOR[p.category]||'#1565c0';
+    const mi=(trip.total/1609.34).toFixed(1);
+    const distLabel = trip.reachable ? mi+' mi via trail' : mi+' mi (partly off-trail)';
+    return '<div class="poi-card">'
+      +'<div class="rp-head"><div class="rp-ic" style="background:'+pc+'">'+glyph(CAT_ICON[p.category]||'landmark',20)+'</div>'
+      +'<div><h3>'+p.name+'</h3><div class="rp-cat">'+p.category+' · '+distLabel+'</div>'
+      +(p.dog?'<div class="rp-dog">'+pawSvg(12)+'Dog friendly</div>':'')+'</div></div>'
+      +'<p class="rp-blurb">'+p.blurb+'</p>'
+      +'<div class="rp-actions"><button data-lat="'+p.lat+'" data-lon="'+p.lon+'" data-name="'+p.name.replace(/"/g,'&quot;')+'" class="go primary">'+glyph('route',15)+'Show route</button>'
+      +'<button data-dir="'+p.lat+','+p.lon+'" class="dir">'+glyph('external',15)+'Open in Maps</button></div></div>';
+  }
+  if(focusPoi){
+    // ---- Clicked a POI: lead with a detail card telling you what it is ----
+    const pc=POI_COLOR[focusPoi.category]||'#1565c0';
+    const catLabel=focusPoi.category.charAt(0).toUpperCase()+focusPoi.category.slice(1);
+    document.getElementById('panelHead').style.setProperty('--ph',pc);
+    document.getElementById('panelTitle').textContent=focusPoi.name;
+    document.getElementById('panelRoute').textContent=catLabel+(focusPoi.dog?' · Dog friendly':'');
+    const detail='<div class="poi-card detail" style="border-color:'+pc+'">'
+      +'<div class="rp-head"><div class="rp-ic" style="background:'+pc+'">'+glyph(CAT_ICON[focusPoi.category]||'landmark',22)+'</div>'
+      +'<div><h3>'+focusPoi.name+'</h3><div class="rp-cat">'+catLabel+'</div>'
+      +(focusPoi.dog?'<div class="rp-dog">'+pawSvg(12)+'Dog friendly</div>':'')+'</div></div>'
+      +'<p class="rp-blurb">'+focusPoi.blurb+'</p>'
+      +'<div class="rp-actions">'
+      +'<button data-lat="'+focusPoi.lat+'" data-lon="'+focusPoi.lon+'" data-name="'+focusPoi.name.replace(/"/g,'&quot;')+'" class="route-me primary">'+glyph('route',15)+'Show route</button>'
+      +'<button data-dir="'+focusPoi.lat+','+focusPoi.lon+'" class="dir">'+glyph('external',15)+'Open in Maps</button></div></div>';
+    const rest = near.length
+      ? '<h2 class="sec">Other stops within '+RADIUS_MI+' miles</h2>'+near.map(o=>cardHtml(o.p,o.trip)).join('')
+      : '<div class="panel-empty" style="padding:22px 16px">No other stops within '+RADIUS_MI+' miles'+(filtered?' match your filters':'')+'.</div>';
+    body.innerHTML = detail + chipsHtml + rest;
+  } else if(!near.length){
+    document.getElementById('panelHead').style.setProperty('--ph','var(--accent)');
+    document.getElementById('panelTitle').textContent='Points of interest';
     document.getElementById('panelRoute').textContent='Within '+RADIUS_MI+' miles of the spot you tapped';
     body.innerHTML=chipsHtml+'<div class="panel-empty">No '+(filtered?'matching ':'')+'points of interest within '+RADIUS_MI+' miles of here.'+(filtered?'<br>Try turning more categories on above.':'<br>Try tapping a busier stretch of the trail (downtown Greenville or Travelers Rest).')+'</div>';
   } else {
+    document.getElementById('panelHead').style.setProperty('--ph','var(--accent)');
+    document.getElementById('panelTitle').textContent='Points of interest';
     document.getElementById('panelRoute').textContent=near.length+' stop'+(near.length>1?'s':'')+' within '+RADIUS_MI+' miles · nearest by trail';
-    body.innerHTML = chipsHtml + near.map(({p,trip})=>{
-      const pc=POI_COLOR[p.category]||'#1565c0';
-      const mi=(trip.total/1609.34).toFixed(1);
-      const distLabel = trip.reachable ? mi+' mi via trail' : mi+' mi (partly off-trail)';
-      return '<div class="poi-card">'
-        +'<div class="rp-head"><div class="rp-ic" style="background:'+pc+'">'+glyph(CAT_ICON[p.category]||'landmark',20)+'</div>'
-        +'<div><h3>'+p.name+'</h3><div class="rp-cat">'+p.category+' · '+distLabel+'</div></div></div>'
-        +'<p class="rp-blurb">'+p.blurb+'</p>'
-        +'<div class="rp-actions"><button data-lat="'+p.lat+'" data-lon="'+p.lon+'" data-name="'+p.name.replace(/"/g,'&quot;')+'" class="go primary">'+glyph('route',15)+'Show route</button>'
-        +'<button data-dir="'+p.lat+','+p.lon+'" class="dir">'+glyph('external',15)+'Open in Maps</button></div></div>';
-    }).join('');
+    body.innerHTML = chipsHtml + near.map(o=>cardHtml(o.p,o.trip)).join('');
   }
   panel.classList.add('open');
   document.getElementById('sheet').classList.remove('open');
@@ -554,12 +616,13 @@ function openPanelAt(latlng,focusName){
   body.scrollTop=0;
   // wire filter chips — toggle category, refresh map markers + this list
   body.querySelectorAll('.panel-filter .chip').forEach(b=>b.onclick=()=>{
-    poiCatOn[b.dataset.cat]=!poiCatOn[b.dataset.cat];
-    updatePoiVisibility();
+    if(b.dataset.dog){ setDogOnly(!dogOnly); }
+    else { poiCatOn[b.dataset.cat]=!poiCatOn[b.dataset.cat]; updatePoiVisibility(); }
     openPanelAt(routeOrigin,focusName);
   });
   // wire action buttons
   body.querySelectorAll('.go').forEach(b=>b.onclick=()=>showRoute(+b.dataset.lat,+b.dataset.lon,b.dataset.name));
+  body.querySelectorAll('.route-me').forEach(b=>b.onclick=()=>routeFromUser(+b.dataset.lat,+b.dataset.lon,b.dataset.name));
   body.querySelectorAll('.dir').forEach(b=>b.onclick=()=>{
     window.open('https://www.google.com/maps/dir/?api=1&destination='+b.dataset.dir,'_blank');
   });
@@ -579,6 +642,7 @@ function addToggle(label,sub,swatchHtml,checked,onChange){
   const inp=document.createElement('input');inp.type='checkbox';inp.checked=checked;
   inp.addEventListener('change',()=>onChange(inp.checked));
   row.appendChild(inp);togWrap.appendChild(row);
+  return inp;
 }
 LINES.forEach(l=>{
   if(!layerByLine[l.key]) return;
@@ -591,13 +655,25 @@ addToggle('Currently closed','Active closures & detours','<span class="swatch cl
   on=>{ on?map.addLayer(closureLayer):map.removeLayer(closureLayer); });
 addToggle('Points of interest','Food/shops appear when you zoom in','<span class="swatch" style="background:#1565c0"></span>',true,
   on=>{ poisEnabled=on; updatePoiVisibility(); });
+addToggle('Parking','Trailhead parking lots',
+  '<span class="amen-swatch" style="background:'+POI_COLOR.parking+'">'+glyph('parking',13)+'</span>',true,
+  on=>{ poiCatOn.parking=on; updatePoiVisibility(); });
+addToggle('Restrooms','Public restrooms along the trail',
+  '<span class="amen-swatch" style="background:'+POI_COLOR.restroom+'">'+glyph('restroom',13)+'</span>',true,
+  on=>{ poiCatOn.restroom=on; updatePoiVisibility(); });
+addToggle('Water refill stations','Drinking water & refill points',
+  '<span class="amen-swatch" style="background:'+POI_COLOR.water+'">'+glyph('water',13)+'</span>',true,
+  on=>{ poiCatOn.water=on; updatePoiVisibility(); });
+dogToggle=addToggle('Dog friendly','Show only dog-welcome stops (🐾 = dog friendly)',
+  '<span class="amen-swatch" style="background:#6d4c41">'+pawSvg(13)+'</span>',false,
+  on=>{ setDogOnly(on); if(panel.classList.contains('open')&&routeOrigin) openPanelAt(routeOrigin); });
 
 // ---- Section guide cards ----
 const secWrap=document.getElementById('sections');
 LINES.forEach(l=>{
   if(l.key==='main'||l.key==='tram'||l.key==='connector') return; // show main lines as cards
   const c=document.createElement('div');c.className='card';
-  const constr=l.key==='gold'?'<span class="badge">IN PROGRESS</span>':'';
+  const constr=l.key==='strip'?'<span class="badge">IN PROGRESS</span>':'';
   c.innerHTML='<div class="head"><span class="dot" style="background:'+COLORS[l.key]+'"></span>'
     +'<h3>'+l.name+'</h3>'+constr+'</div>'
     +'<div class="route">'+l.route+'</div>'
@@ -606,7 +682,7 @@ LINES.forEach(l=>{
 });
 
 // ---- Locate ----
-let meMarker=null, meCircle=null;
+let meMarker=null, meCircle=null, userLoc=null, pendingLocate=null;
 const locateBtn=document.getElementById('locateBtn');
 function onLocated(pos){
   locateBtn.classList.remove('busy');
@@ -616,7 +692,10 @@ function onLocated(pos){
     meCircle=L.circle(ll,{radius:acc,color:'#1565c0',weight:1,fillColor:'#1565c0',fillOpacity:.12,interactive:false}).addTo(map);
     meMarker=L.circleMarker(ll,{radius:8,color:'#fff',weight:3,fillColor:'#1565c0',fillOpacity:1,interactive:false}).addTo(map);
   }
-  map.setView(ll, Math.max(15, map.getZoom()));
+  userLoc=L.latLng(ll[0],ll[1]);
+  // if a "Show route from my location" request is waiting, hand it the fix; else just recenter
+  if(pendingLocate){ const cb=pendingLocate; pendingLocate=null; cb(ll); }
+  else { map.setView(ll, Math.max(15, map.getZoom())); }
 }
 function onLocateError(err, retried){
   // On timeout / position-unavailable, retry once with low accuracy (Wi-Fi/cell — faster, works indoors)
@@ -625,6 +704,7 @@ function onLocateError(err, retried){
       {enableHighAccuracy:false, timeout:20000, maximumAge:300000});
     return;
   }
+  pendingLocate=null;
   locateBtn.classList.remove('busy');
   let msg='Could not get your location.';
   if(err){
@@ -637,15 +717,23 @@ function onLocateError(err, retried){
   }
   alert(msg);
 }
-locateBtn.addEventListener('click',()=>{
+// Shared geolocation request — used by the locate FAB and "Show route" from your location.
+// Pass a callback to run with [lat,lng] once located; omit it to just recenter on the user.
+function startLocate(cb){
   if(!navigator.geolocation){ alert('Location isn’t supported by this browser.'); return; }
   if(!window.isSecureContext && location.protocol!=='https:' && location.hostname!=='localhost'){
     alert('Location needs a secure (https) connection. Open the site at https://www.swamprabbittrailguide.com'); return;
   }
+  pendingLocate=cb||null;
   locateBtn.classList.add('busy');
   navigator.geolocation.getCurrentPosition(onLocated, e=>onLocateError(e,false),
     {enableHighAccuracy:true, timeout:12000, maximumAge:60000});
-});
+}
+locateBtn.addEventListener('click',()=>startLocate());
+// Route to a POI from the user's current GPS location (locates first, then draws the route).
+function routeFromUser(lat,lon,name){
+  startLocate(function(ll){ routeOrigin=L.latLng(ll[0],ll[1]); showRoute(lat,lon,name,'your location'); });
+}
 } // end initApp
 
 // ---- Bottom sheet behavior (wired immediately, independent of the map) ----
