@@ -437,15 +437,29 @@ const closureLayer=L.layerGroup().addTo(map);
 const radLayer=L.layerGroup().addTo(map);
 const radRouteLayer=L.layerGroup().addTo(map);
 let radPopup=null;
+// midpoint used for both the pin and the card (true middle for 2-point routes)
+function radMid(r){
+  if(r.route.length===2) return [(r.route[0][0]+r.route[1][0])/2,(r.route[0][1]+r.route[1][1])/2];
+  return r.route[Math.floor(r.route.length/2)];
+}
 function showRadRoute(r){
   radRouteLayer.clearLayers();
   L.polyline(r.route,{color:'#ffffff',weight:12,opacity:.95,lineCap:'round',lineJoin:'round'}).addTo(radRouteLayer);
-  L.polyline(r.route,{color:'#ee7d2b',weight:7,opacity:1,lineCap:'round',lineJoin:'round'}).addTo(radRouteLayer);
+  L.polyline(r.route,{color:'#ee7d2b',weight:7,opacity:1,lineCap:'round',lineJoin:'round',
+    dashArray:r.approx?'10,9':null}).addTo(radRouteLayer);
+  // routes we only have entrance/exit points for: mark both ends so the straight line isn't misread as the path
+  if(r.approx){
+    [['Entrance',r.route[0]],['Exit',r.route[r.route.length-1]]].forEach(p=>{
+      L.circleMarker(p[1],{radius:6,color:'#fff',weight:2,fillColor:'#ee7d2b',fillOpacity:1})
+        .bindTooltip(p[0],{direction:'top'}).addTo(radRouteLayer);
+    });
+  }
   const mi=(r.meters/1609.34).toFixed(2);
-  const link=r.strava?'<br><a href="'+r.strava+'" target="_blank" rel="noopener">View on Strava</a>':'';
-  radPopup=L.popup({autoPan:true}).setLatLng(r.route[Math.floor(r.route.length/2)])
+  // credit the trail builder, linking just the org name
+  const built=r.builder?'<br>Built by <a href="'+r.builderUrl+'" target="_blank" rel="noopener">'+r.builder+'</a>':'';
+  radPopup=L.popup({autoPan:true}).setLatLng(radMid(r))
     .setContent('<span class="pcat" style="color:#ee7d2b">Rad Rabbit skills trail</span><br><b>'+r.name+'</b><br>'
-      +r.blurb+'<br><b>'+mi+' mi</b> ('+r.meters+' m)'+link);
+      +r.blurb+'<br><b>'+mi+' mi</b> ('+r.meters+' m)'+built);
   radPopup.openOn(map);
   map.fitBounds(L.latLngBounds(r.route).pad(0.6));
 }
@@ -453,7 +467,7 @@ function showRadRoute(r){
 map.on('popupclose',e=>{ if(e.popup===radPopup){ radRouteLayer.clearLayers(); radPopup=null; } });
 (window.SRT_RADRABBIT||[]).forEach(r=>{
   if(!r.route||!r.route.length) return;
-  const mid=r.route[Math.floor(r.route.length/2)];
+  const mid=radMid(r);
   const icon=L.divIcon({className:'',html:'<div class="rad-pin"><img src="radrabbit.png" alt="Rad Rabbit" style="width:22px;height:auto;display:block"></div>',
     iconSize:[33,36],iconAnchor:[16,36],popupAnchor:[0,-34]});
   L.marker(mid,{icon,zIndexOffset:1200}).addTo(radLayer)
