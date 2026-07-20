@@ -174,6 +174,12 @@
   .closed-pin svg{width:17px;height:17px;fill:#fff;}
   .click-dot{width:16px;height:16px;border-radius:50%;background:var(--accent);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);animation:clickpulse 1.6s ease-out infinite;}
   @keyframes clickpulse{0%{box-shadow:0 1px 4px rgba(0,0,0,.45),0 0 0 0 rgba(27,122,59,.45);}70%{box-shadow:0 1px 4px rgba(0,0,0,.45),0 0 0 14px rgba(27,122,59,0);}100%{box-shadow:0 1px 4px rgba(0,0,0,.45),0 0 0 0 rgba(27,122,59,0);}}
+  /* Rad Rabbit skills-trail marker (logo pin) */
+  .rad-pin{display:flex;align-items:center;justify-content:center;background:#fff;border-radius:8px;
+    border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.45);padding:3px 4px;}
+  .rad-pin img{display:block;}
+  .rad-swatch{flex:0 0 auto;width:26px;display:flex;align-items:center;justify-content:center;}
+  .rad-swatch img{width:22px;height:auto;display:block;}
   .poi-pin{position:relative;}
   .poi-pin svg{filter:drop-shadow(0 1px 2px rgba(0,0,0,.35));}
   .paw-badge{position:absolute;top:-3px;right:-5px;width:17px;height:17px;border-radius:50%;background:#6d4c41;border:1.6px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(0,0,0,.4);}
@@ -424,6 +430,34 @@ const closureLayer=L.layerGroup().addTo(map);
   L.marker(mid,{icon:ic,zIndexOffset:1100}).bindPopup(
     '<span class="pcat" style="color:#d32f2f">Currently closed</span><br><b>'+c.name+'</b><br>'+c.stretch+'<br>'+c.detail+'<br><b>'+c.dates+'</b>'
   ).addTo(closureLayer);
+});
+
+// ---- Rad Rabbit skills trails (short MTB feature lines just off the SRT) ----
+// Tapping the logo pin highlights that trail's GPX track and shows a card.
+const radLayer=L.layerGroup().addTo(map);
+const radRouteLayer=L.layerGroup().addTo(map);
+let radPopup=null;
+function showRadRoute(r){
+  radRouteLayer.clearLayers();
+  L.polyline(r.route,{color:'#ffffff',weight:12,opacity:.95,lineCap:'round',lineJoin:'round'}).addTo(radRouteLayer);
+  L.polyline(r.route,{color:'#ee7d2b',weight:7,opacity:1,lineCap:'round',lineJoin:'round'}).addTo(radRouteLayer);
+  const mi=(r.meters/1609.34).toFixed(2);
+  const link=r.strava?'<br><a href="'+r.strava+'" target="_blank" rel="noopener">View on Strava</a>':'';
+  radPopup=L.popup({autoPan:true}).setLatLng(r.route[Math.floor(r.route.length/2)])
+    .setContent('<span class="pcat" style="color:#ee7d2b">Rad Rabbit skills trail</span><br><b>'+r.name+'</b><br>'
+      +r.blurb+'<br><b>'+mi+' mi</b> ('+r.meters+' m)'+link);
+  radPopup.openOn(map);
+  map.fitBounds(L.latLngBounds(r.route).pad(0.6));
+}
+// closing the card clears the highlighted track
+map.on('popupclose',e=>{ if(e.popup===radPopup){ radRouteLayer.clearLayers(); radPopup=null; } });
+(window.SRT_RADRABBIT||[]).forEach(r=>{
+  if(!r.route||!r.route.length) return;
+  const mid=r.route[Math.floor(r.route.length/2)];
+  const icon=L.divIcon({className:'',html:'<div class="rad-pin"><img src="radrabbit.png" alt="Rad Rabbit" style="width:22px;height:auto;display:block"></div>',
+    iconSize:[33,36],iconAnchor:[16,36],popupAnchor:[0,-34]});
+  L.marker(mid,{icon,zIndexOffset:1200}).addTo(radLayer)
+    .on('click',e=>{ L.DomEvent.stopPropagation(e); showRadRoute(r); });
 });
 
 // ---- POI markers (one layer per category, so they can be filtered) ----
@@ -720,6 +754,9 @@ catToggle.restroom=addToggle('Restrooms','Public restrooms along the trail',
 catToggle.water=addToggle('Water refill stations','Drinking water & refill points',
   '<span class="amen-swatch" style="background:'+POI_COLOR.water+'">'+glyph('water',13)+'</span>',true,
   on=>{ poiCatOn.water=on; updatePoiVisibility(); });
+addToggle('Rad Rabbit trails','Short MTB skills lines · tap the pin for the route',
+  '<span class="rad-swatch"><img src="radrabbit.png" alt=""></span>',true,
+  on=>{ if(on){map.addLayer(radLayer);} else {map.removeLayer(radLayer);radRouteLayer.clearLayers();} });
 dogToggle=addToggle('Dog friendly','Show only dog-welcome stops (🐾 = dog friendly)',
   '<span class="amen-swatch" style="background:#6d4c41">'+pawSvg(13)+'</span>',false,
   on=>{ setDogOnly(on); if(panel.classList.contains('open')&&routeOrigin) openPanelAt(routeOrigin); });
